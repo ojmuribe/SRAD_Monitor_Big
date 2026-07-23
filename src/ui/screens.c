@@ -26,7 +26,7 @@ void create_screen_scn_post_srad() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_post_srad = obj;
     lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 320, 240);
+    lv_obj_set_size(obj, 800, 480);
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x00f500), LV_PART_MAIN | LV_STATE_DEFAULT);
     {
         lv_obj_t *parent_obj = obj;
@@ -73,7 +73,7 @@ void create_screen_scn_pre_srad() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_pre_srad = obj;
     lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 320, 240);
+    lv_obj_set_size(obj, 800, 480);
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
     {
         lv_obj_t *parent_obj = obj;
@@ -141,7 +141,7 @@ void create_screen_scn_set_clock() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_set_clock = obj;
     lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 320, 240);
+    lv_obj_set_size(obj, 800, 480);
     {
         lv_obj_t *parent_obj = obj;
         {
@@ -392,7 +392,7 @@ void create_screen_scn_wifi_conn() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_wifi_conn = obj;
     lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 320, 240);
+    lv_obj_set_size(obj, 800, 480);
     {
         lv_obj_t *parent_obj = obj;
         {
@@ -435,7 +435,7 @@ void create_screen_main() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.main = obj;
     lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 320, 240);
+    lv_obj_set_size(obj, 800, 480);
     {
         lv_obj_t *parent_obj = obj;
         {
@@ -489,7 +489,7 @@ void create_screen_scn_rtc_sync() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_rtc_sync = obj;
     lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 320, 240);
+    lv_obj_set_size(obj, 800, 480);
     {
         lv_obj_t *parent_obj = obj;
         {
@@ -522,7 +522,7 @@ void create_screen_scn_srad() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_srad = obj;
     lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 320, 240);
+    lv_obj_set_size(obj, 800, 480);
     lv_obj_set_style_bg_grad_dir(obj, LV_GRAD_DIR_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(obj, lv_color_hex(0xff0000), LV_PART_MAIN | LV_STATE_DEFAULT);
     {
