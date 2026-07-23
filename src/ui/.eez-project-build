@@ -1,0 +1,20 @@
+{
+  "files": [
+    "actions.h",
+    "fonts.h",
+    "images.c",
+    "images.h",
+    "screens.c",
+    "screens.h",
+    "structs.h",
+    "styles.c",
+    "styles.h",
+    "ui.c",
+    "ui.h",
+    "ui_font_roboto_mono_bold_100.c",
+    "ui_font_roboto_mono_bold_40.c",
+    "ui_font_roboto_mono_bold_50.c",
+    "ui_image_set_clock2_50x50.c",
+    "vars.h"
+  ]
+}
