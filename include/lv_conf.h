@@ -910,7 +910,7 @@
 #define LV_USE_LINUX_DRM        0
 
 /*Interface for TFT_eSPI*/
-#define LV_USE_TFT_ESPI         1
+#define LV_USE_TFT_ESPI         0 /* Ya no se usa TFT_eSPI: usamos Arduino_GFX (panel RGB) */
 
 /*Driver for evdev input devices*/
 #define LV_USE_EVDEV    0

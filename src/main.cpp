@@ -44,10 +44,14 @@
 // #define RXPIN 27
 // #define TXPIN 22
 
-// CYD RGB LED Pins
-#define CYD_LED_RED 4
-#define CYD_LED_GREEN 16
-#define CYD_LED_BLUE 17
+// ----------------------------------------------------------------
+// LED RGB de la CYD de 2,4" — LA ESP32-8048S070C NO TIENE ESTE LED.
+// Además GPIO4 y GPIO16 están usados por el panel RGB (B4 y G4),
+// así que este bloque debe permanecer deshabilitado en esta placa.
+// ----------------------------------------------------------------
+// #define CYD_LED_RED 4
+// #define CYD_LED_GREEN 16
+// #define CYD_LED_BLUE 17
 
 //************* lvgl and UI includes  *************
 #include <lvgl.h>
@@ -59,31 +63,53 @@
 #include "ui/images.h"
 
 //************* TFT display and includes  *************
+#include <Arduino_GFX_Library.h>
+#include <TAMC_GT911.h>
+// #include <TFT_eSPI.h>
+// #include <XPT2046_Touchscreen.h>
 
-#include <TFT_eSPI.h>
-#include <XPT2046_Touchscreen.h>
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 480
 
-// Touchscreen pins
-#define XPT2046_IRQ 36  // T_IRQ
-#define XPT2046_MOSI 32 // T_DIN
-#define XPT2046_MISO 39 // T_OUT
-#define XPT2046_CLK 25  // T_CLK
-#define XPT2046_CS 33   // T_CS
+// ----------------------------------------------------------------
+// Panel RGB (ESP32-8048S070C, driver EK9716, pinout Sunton estándar)
+// ----------------------------------------------------------------
+#define GFX_BL 2 // pin de backlight
 
-SPIClass touchscreenSPI = SPIClass(VSPI);
-XPT2046_Touchscreen touchscreen(XPT2046_CS, XPT2046_IRQ);
+Arduino_ESP32RGBPanel *rgbpanel = new Arduino_ESP32RGBPanel(
+    41 /* DE */, 40 /* VSYNC */, 39 /* HSYNC */, 42 /* PCLK */,
+    14 /* R0 */, 21 /* R1 */, 47 /* R2 */, 48 /* R3 */, 45 /* R4 */,
+    9 /* G0 */, 46 /* G1 */, 3 /* G2 */, 8 /* G3 */, 16 /* G4 */, 1 /* G5 */,
+    15 /* B0 */, 7 /* B1 */, 6 /* B2 */, 5 /* B3 */, 4 /* B4 */,
+    0 /* hsync_polarity */, 180 /* hsync_front_porch */, 30 /* hsync_pulse_width */, 16 /* hsync_back_porch */,
+    0 /* vsync_polarity */, 12 /* vsync_front_porch */, 13 /* vsync_pulse_width */, 10 /* vsync_back_porch */);
 
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 240
+Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
+    SCREEN_WIDTH, SCREEN_HEIGHT, rgbpanel, 0 /* rotation */, true /* auto_flush */);
 
-// Touchscreen coordinates: (x, y) and pressure (z)
-int x, y, z;
+// ----------------------------------------------------------------
+// Touch capacitivo GT911 (I2C)
+// ----------------------------------------------------------------
+#define GT911_SDA 19
+#define GT911_SCL 20
+#define GT911_RST 38
+#define GT911_INT -1 // no conectado en esta placa por defecto -> TAMC_GT911 hace polling
 
-#define DRAW_BUF_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT / 20 * (LV_COLOR_DEPTH / 8))
-uint32_t draw_buf[DRAW_BUF_SIZE / 4];
+TAMC_GT911 ts(
+    GT911_SDA,
+    GT911_SCL,
+    GT911_INT,
+    GT911_RST,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT);
 
-// TFT display
-TFT_eSPI tft = TFT_eSPI();
+// ----------------------------------------------------------------
+// Buffer de dibujo de LVGL — reservado en PSRAM en setup() (ver más abajo),
+// porque con 800px de ancho no interesa usar RAM interna estática.
+// ----------------------------------------------------------------
+#define DRAW_BUF_LINES 40
+#define DRAW_BUF_SIZE (SCREEN_WIDTH * DRAW_BUF_LINES) // en píxeles
+lv_color_t *draw_buf = nullptr;
 
 // PRE-SRAD variables
 #define GPIO_SRAD 22
@@ -114,28 +140,19 @@ void log_print(lv_log_level_t level, const char *buf)
   // Serial.flush();
 }
 
-// Get the Touchscreen data
+// Get the Touchscreen data (GT911 capacitivo, coordenadas ya en pixeles reales)
 void touchscreen_read(lv_indev_t *indev, lv_indev_data_t *data)
 {
-  // Checks if Touchscreen was touched, and prints X, Y and Pressure (Z)
-  if (touchscreen.tirqTouched() && touchscreen.touched())
+  ts.read();
+
+  if (ts.isTouched)
   {
-    // Get Touchscreen points
-    TS_Point p = touchscreen.getPoint();
-    // Calibrate Touchscreen points with map function to the correct width and height
-    x = map(p.x, 200, 3700, 1, SCREEN_WIDTH);
-    y = map(p.y, 240, 3800, 1, SCREEN_HEIGHT);
-    z = p.z;
-
     data->state = LV_INDEV_STATE_PRESSED;
-
-    // Set the coordinates
-    data->point.x = x;
-    data->point.y = y;
+    data->point.x = ts.points[0].x;
+    data->point.y = ts.points[0].y;
 #if DEBUG
-    String touch_data = "X = " + String(x) + "  Y = " + String(y) + "  Z = " + String(z);
+    debugPrintln("X = %d  Y = %d", ts.points[0].x, ts.points[0].y);
 #endif
-    debugPrintln("%s", touch_data);
   }
   else
   {
@@ -143,31 +160,59 @@ void touchscreen_read(lv_indev_t *indev, lv_indev_data_t *data)
   }
 }
 
+// Flush callback de LVGL 9 hacia Arduino_GFX (debe estar a nivel de fichero,
+// C++ no permite funciones anidadas dentro de otra función)
+void my_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
+  uint32_t w = lv_area_get_width(area);
+  uint32_t h = lv_area_get_height(area);
+
+  gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
+
+  lv_display_flush_ready(disp);
+}
+
 // lvgl initialization for esp32 board
 void lv_init_esp32(void)
 {
-
   // Register print function for debugging
   // lv_log_register_print_cb(log_print); *** ... *** elimino los logs
 
-  // Start the SPI for the touchscreen and init the touchscreen
-  touchscreenSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
-  touchscreen.begin(touchscreenSPI);
+  // --- Display: panel RGB via Arduino_GFX ---
+  if (!gfx->begin())
+  {
+    debugPrintln("gfx->begin() failed!");
+  }
+  gfx->fillScreen(RGB565_BLACK);
 
-  // Set the Touchscreen rotation in portrait mode
-  touchscreen.setRotation(3); // 2:vertical / 3:horizontal
+  pinMode(GFX_BL, OUTPUT);
+  digitalWrite(GFX_BL, HIGH);
 
-  // Create a display object
-  lv_display_t *disp;
+  // --- Touch: GT911 ---
+  ts.begin(); // si no detecta toques, probar pasando GT911_ADDR2 como argumento
+  ts.setRotation(ROTATION_NORMAL);
 
-  // Initialize the TFT display using the TFT_eSPI library
-  disp = lv_tft_espi_create(SCREEN_WIDTH, SCREEN_HEIGHT, draw_buf, sizeof(draw_buf));
+  // --- Reservar el buffer de dibujo de LVGL en PSRAM ---
+  draw_buf = (lv_color_t *)heap_caps_malloc(DRAW_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+  if (draw_buf == nullptr)
+  {
+    debugPrintln("ERROR: no se pudo reservar draw_buf en PSRAM");
+  }
 
-  // set rotation mode
-  tft.setRotation(3); // 0 or 2 for  portrait / 1 or 3 for landscape
+  lv_display_t *disp =
+      lv_display_create(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-  // ✅ AÑADE ESTO — LVGL 9.x usa millis() directamente como fuente de tiempo
-  lv_tick_set_cb((lv_tick_get_cb_t)millis);
+  lv_display_set_buffers(
+      disp,
+      draw_buf,
+      NULL,
+      DRAW_BUF_SIZE * sizeof(lv_color_t),
+      LV_DISPLAY_RENDER_MODE_PARTIAL);
+
+  lv_display_set_flush_cb(disp, my_flush_cb);
+
+  // Nota: no hace falta llamar a lv_tick_set_cb() aqui - lv_conf.h ya tiene
+  // LV_TICK_CUSTOM=1 con millis() como fuente de tiempo (LV_TICK_CUSTOM_SYS_TIME_EXPR).
 
   // Initialize an LVGL input device object (Touchscreen)
   lv_indev_t *indev = lv_indev_create();
@@ -177,11 +222,11 @@ void lv_init_esp32(void)
   lv_indev_set_read_cb(indev, touchscreen_read);
 
 // you can define TFT_INVERTED as compiler param in platformio.ini
-#ifdef TFT_INVERTED
-  tft.invertDisplay(true);
-#else
-  tft.invertDisplay(false);
-#endif
+//#ifdef TFT_INVERTED
+//  gfx->invertDisplay(true);
+//#else
+//  gfx->invertDisplay(false);
+//#endif
 }
 
 // ============================================================
@@ -464,17 +509,13 @@ void setup()
   debugPrintln(SW_NAME_REV);
   debugPrintln("%s", LVGL_Arduino);
 
-  pinMode(CYD_LED_RED, OUTPUT);
-  pinMode(CYD_LED_GREEN, OUTPUT);
-  pinMode(CYD_LED_BLUE, OUTPUT);
+  // LED RGB de la CYD de 2,4" eliminado: la ESP32-8048S070C no lo tiene,
+  // y sus pines (4, 16) están ocupados por el panel RGB (B4, G4).
+
   // GPIO22: entrada con pull-up interno para señal SRAD
   pinMode(GPIO_SRAD, INPUT_PULLUP);
   // GPIO27: entrada con pull-up interno para salida prematura de SRAD
   pinMode(GPIO_ENDSRAD, INPUT_PULLUP);
-
-  digitalWrite(CYD_LED_BLUE, HIGH);
-  digitalWrite(CYD_LED_GREEN, HIGH);
-  digitalWrite(CYD_LED_RED, HIGH);
 
   // Start LVGL
   lv_init();
