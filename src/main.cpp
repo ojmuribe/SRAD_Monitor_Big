@@ -221,12 +221,12 @@ void lv_init_esp32(void)
   // Set the callback function to read Touchscreen input
   lv_indev_set_read_cb(indev, touchscreen_read);
 
-// you can define TFT_INVERTED as compiler param in platformio.ini
-//#ifdef TFT_INVERTED
-//  gfx->invertDisplay(true);
-//#else
-//  gfx->invertDisplay(false);
-//#endif
+  // you can define TFT_INVERTED as compiler param in platformio.ini
+  // #ifdef TFT_INVERTED
+  //  gfx->invertDisplay(true);
+  // #else
+  //  gfx->invertDisplay(false);
+  // #endif
 }
 
 // ============================================================
@@ -341,13 +341,9 @@ void IRAM_ATTR onTimer1s()
 // Inicialización del timer
 void initTimer1s()
 {
-  // Timer 0, prescaler 80 -> 1 tick = 1us (80 MHz / 80 = 1MHz)
-  timer1s = timerBegin(0, 80, true);
-  timerAttachInterrupt(timer1s, &onTimer1s, true);
-
-  // 1.000.000 us = 1 segundo exacto, con repetición (true)
-  timerAlarmWrite(timer1s, 1000000, true);
-  timerAlarmEnable(timer1s);
+  timer1s = timerBegin(1000000); // frecuencia del timer: 1 MHz
+  timerAttachInterrupt(timer1s, &onTimer1s);
+  timerAlarm(timer1s, 1000000, true, 0);
 }
 
 void doTimer1s()
