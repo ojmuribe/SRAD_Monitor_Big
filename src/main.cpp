@@ -112,7 +112,7 @@ TAMC_GT911 ts(
 lv_color_t *draw_buf = nullptr;
 
 // PRE-SRAD variables
-#define GPIO_SRAD 22
+#define GPIO_SRAD 17
 const uint16_t SHUTDOWN_TIME = 120;        // segundos
 uint16_t pre_srad_countdown = 3 * 60 + 30; // 210s (valor de prueba)
 
@@ -128,7 +128,7 @@ uint32_t srad_countdown = 0; // segundos que faltan para fin de SRAD
 uint8_t srad_end_hour = 0;   // hora de finalización de SRAD
 
 // END SRAD variables
-#define GPIO_ENDSRAD 27             // Salir prematuramente del SRAD
+#define GPIO_ENDSRAD 17             // Salir prematuramente del SRAD
 uint16_t post_srad_duration_s = 20; // segundos en POST_SRAD antes de pasar a SHOW_CLOCK
 uint16_t post_srad_countdown = 0;
 
@@ -500,6 +500,7 @@ void btn_goto_set_clock_handler(lv_event_t *e)
 void setup()
 {
   Serial.begin(115200);
+  debugPrint("INICIADO SETUP");
   String LVGL_Arduino = String("LVGL Library Version: ") + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
 
   debugPrintln(SW_NAME_REV);
@@ -950,6 +951,15 @@ void loop()
   default:
     break;
   }
+  // Para depuración
+  static uint32_t t = 0;
+
+  if (millis() - t > 1000)
+  {
+    t = millis();
+    Serial.println("LOOP VIVO");
+  }
+  Serial.printf("LV tick: %lu\n", lv_tick_get());
 
   lv_task_handler();
   delay(5);
