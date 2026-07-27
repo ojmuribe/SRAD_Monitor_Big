@@ -190,7 +190,7 @@ void lv_init_esp32(void)
 
   // --- Touch: GT911 ---
   ts.begin(); // si no detecta toques, probar pasando GT911_ADDR2 como argumento
-  ts.setRotation(ROTATION_NORMAL);
+  ts.setRotation(ROTATION_INVERTED);
 
   // --- Reservar el buffer de dibujo de LVGL en PSRAM ---
   draw_buf = (lv_color_t *)heap_caps_malloc(DRAW_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
@@ -516,6 +516,7 @@ void setup()
 
   // Start LVGL
   lv_init();
+  lv_tick_set_cb((lv_tick_get_cb_t)millis);
   // Init TFT and Touch for esp32
   lv_init_esp32();
   // Integrate EEZ Studio GUI
@@ -951,15 +952,6 @@ void loop()
   default:
     break;
   }
-  // Para depuración
-  static uint32_t t = 0;
-
-  if (millis() - t > 1000)
-  {
-    t = millis();
-    Serial.println("LOOP VIVO");
-  }
-  Serial.printf("LV tick: %lu\n", lv_tick_get());
 
   lv_task_handler();
   delay(5);
