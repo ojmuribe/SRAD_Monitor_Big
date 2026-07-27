@@ -7,9 +7,9 @@
 extern "C" {
 #endif
 
-extern const lv_font_t ui_font_roboto_mono_bold_40;
-extern const lv_font_t ui_font_roboto_mono_bold_50;
 extern const lv_font_t ui_font_roboto_mono_bold_100;
+extern const lv_font_t ui_font_roboto_mono_bold_125;
+extern const lv_font_t ui_font_roboto_mono_bold_250;
 
 #ifndef EXT_FONT_DESC_T
 #define EXT_FONT_DESC_T
