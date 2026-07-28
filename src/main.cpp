@@ -131,7 +131,7 @@ uint32_t srad_countdown = 0; // segundos que faltan para fin de SRAD
 uint8_t srad_end_hour = 0;   // hora de finalización de SRAD
 
 // END SRAD variables
-#define GPIO_ENDSRAD 17             // Salir prematuramente del SRAD
+#define GPIO_ENDSRAD 18             // Salir prematuramente del SRAD
 uint16_t post_srad_duration_s = 20; // segundos en POST_SRAD antes de pasar a SHOW_CLOCK
 uint16_t post_srad_countdown = 0;
 
