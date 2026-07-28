@@ -30,8 +30,13 @@ typedef struct _objects_t {
     lv_obj_t *scn_rtc_sync;
     lv_obj_t *scn_srad;
     lv_obj_t *lbl_scn_post_srad_message;
-    lv_obj_t *lbl_scnpost_srad_date;
-    lv_obj_t *lbl_scnpost_srad_time;
+    lv_obj_t *lbl_scnpost_srad_request_date_time;
+    lv_obj_t *lbl_scnpost_srad_break_date_time;
+    lv_obj_t *lbl_scnpost_srad_start_date_time;
+    lv_obj_t *lbl_scnpost_srad_stimated_end_date_time;
+    lv_obj_t *lbl_scnpost_srad_stimated_duration;
+    lv_obj_t *lbl_scnpost_srad_real_duration;
+    lv_obj_t *lbl_scnpost_srad_real_end_date_time;
     lv_obj_t *lbl_scn_pre_srad_countdown;
     lv_obj_t *lbl_scn_pre_srad_message;
     lv_obj_t *lbl_scn_pre_srad_hora_srad;

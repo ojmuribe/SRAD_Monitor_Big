@@ -143,7 +143,7 @@
               "objID": "b539639f-8a9c-4208-860b-44bb0dc62c9b",
               "type": "LVGLLabelWidget",
               "left": 0,
-              "top": 6,
+              "top": 32,
               "width": 800,
               "height": 52,
               "customInputs": [],
@@ -196,7 +196,7 @@
               "left": 0,
               "top": 119,
               "width": 800,
-              "height": 79,
+              "height": 38,
               "customInputs": [],
               "customOutputs": [],
               "style": {
@@ -207,7 +207,7 @@
               },
               "timeline": [],
               "eventHandlers": [],
-              "identifier": "lbl_scnpostSRAD_Date",
+              "identifier": "lbl_scnpostSRAD_RequestDateTime",
               "leftUnit": "px",
               "topUnit": "px",
               "widthUnit": "px",
@@ -224,7 +224,7 @@
                 "definition": {
                   "MAIN": {
                     "DEFAULT": {
-                      "text_font": "Roboto_Mono_Bold_100",
+                      "text_font": "MONTSERRAT_34",
                       "align": "DEFAULT",
                       "text_align": "CENTER"
                     }
@@ -232,7 +232,7 @@
                 }
               },
               "groupIndex": 0,
-              "text": "01/02/2026",
+              "text": "SOLICITADO EL XX/YY/ZZ A LAS HH:MM:SS",
               "textType": "literal",
               "longMode": "WRAP",
               "recolor": false
@@ -241,9 +241,9 @@
               "objID": "7d7fb06b-5d87-4ce8-e733-8d0d286f6ba3",
               "type": "LVGLLabelWidget",
               "left": 0,
-              "top": 247,
+              "top": 171,
               "width": 800,
-              "height": 132,
+              "height": 38,
               "customInputs": [],
               "customOutputs": [],
               "style": {
@@ -254,7 +254,7 @@
               },
               "timeline": [],
               "eventHandlers": [],
-              "identifier": "lbl_scnpostSRAD_Time",
+              "identifier": "lbl_scnpostSRAD_BreakDateTime",
               "leftUnit": "px",
               "topUnit": "px",
               "widthUnit": "px",
@@ -275,7 +275,7 @@
                 "definition": {
                   "MAIN": {
                     "DEFAULT": {
-                      "text_font": "Roboto_Mono_Bold_125",
+                      "text_font": "MONTSERRAT_34",
                       "text_align": "CENTER"
                     }
                   }
@@ -283,7 +283,262 @@
               },
               "group": "",
               "groupIndex": 0,
-              "text": "01:02:03",
+              "text": "DESCONEXION EL XX/YY/ZZ A LAS HH:MM:SS",
+              "textType": "literal",
+              "longMode": "WRAP",
+              "recolor": false
+            },
+            {
+              "objID": "fdac9398-5571-4780-c126-27225d636e4e",
+              "type": "LVGLLabelWidget",
+              "left": 0,
+              "top": 218,
+              "width": 800,
+              "height": 38,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "06b4a412-14fc-4500-bafb-5fa4096b221e",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "identifier": "lbl_scnpostSRAD_StartDateTime",
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "5a1d8ce6-e312-4d59-a56a-f2a7a76bf698",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_font": "MONTSERRAT_34",
+                      "text_align": "CENTER"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "INICIADO EL XX/YY/ZZ A LAS HH:MM:SS",
+              "textType": "literal",
+              "longMode": "WRAP",
+              "recolor": false
+            },
+            {
+              "objID": "2e8f8511-e747-4b4d-c823-5cd7ac672a4c",
+              "type": "LVGLLabelWidget",
+              "left": 0,
+              "top": 264,
+              "width": 800,
+              "height": 38,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "b3e6b86d-23a3-40b9-b64a-61c907999d9a",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "identifier": "lbl_scnpostSRAD_StimatedEndDateTime",
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "a7d8d2d0-86cd-4a83-8f1e-b03497d2b891",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_font": "MONTSERRAT_34",
+                      "text_align": "CENTER"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "FIN PREVISTO EL XX/YY/ZZ A LAS HH:MM:SS",
+              "textType": "literal",
+              "longMode": "WRAP",
+              "recolor": false
+            },
+            {
+              "objID": "e69402f4-0849-4079-ce7f-d0eeea8bff43",
+              "type": "LVGLLabelWidget",
+              "left": 0,
+              "top": 310,
+              "width": 800,
+              "height": 38,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "95e82c27-a4ec-4eb1-ada8-d240d7ecdcb4",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "identifier": "lbl_scnpostSRAD_StimatedDuration",
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "d6d680d6-286f-41c5-c879-d4befb6d2293",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_font": "MONTSERRAT_34",
+                      "text_align": "CENTER"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "DURACION PREVISTA: HH:MM:SS",
+              "textType": "literal",
+              "longMode": "WRAP",
+              "recolor": false
+            },
+            {
+              "objID": "094b98b0-b16c-4605-b416-850dc4a50a54",
+              "type": "LVGLLabelWidget",
+              "left": 0,
+              "top": 402,
+              "width": 800,
+              "height": 38,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "0786dd4d-21f8-4456-bde6-a8e1cc20ea9d",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "identifier": "lbl_scnpostSRAD_RealDuration",
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "07a3efa5-149c-4fb0-f2e6-8593e7518924",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_font": "MONTSERRAT_34",
+                      "text_align": "CENTER"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "DURACION REAL: HH:MM:SS",
+              "textType": "literal",
+              "longMode": "WRAP",
+              "recolor": false
+            },
+            {
+              "objID": "145cbbba-2351-4040-9a6b-f5d895bc098d",
+              "type": "LVGLLabelWidget",
+              "left": 0,
+              "top": 356,
+              "width": 800,
+              "height": 38,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "55921aeb-ef8d-4d52-a2f9-42f0404c57dd",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "identifier": "lbl_scnpostSRAD_RealEndDateTime",
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "86b684fb-fafb-46e9-b466-5a4b46b0d53f",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_font": "MONTSERRAT_34",
+                      "text_align": "CENTER"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "FIN REAL EL XX/YY/ZZ A LAS HH:MM:SS",
               "textType": "literal",
               "longMode": "WRAP",
               "recolor": false

@@ -34,32 +34,82 @@ void create_screen_scn_post_srad() {
             // lbl_scnPostSRAD_Message
             lv_obj_t *obj = lv_label_create(parent_obj);
             objects.lbl_scn_post_srad_message = obj;
-            lv_obj_set_pos(obj, 0, 6);
+            lv_obj_set_pos(obj, 0, 32);
             lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
             lv_obj_set_style_text_font(obj, &lv_font_montserrat_48, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_label_set_text_static(obj, "FIN SRAD");
         }
         {
-            // lbl_scnpostSRAD_Date
+            // lbl_scnpostSRAD_RequestDateTime
             lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.lbl_scnpost_srad_date = obj;
+            objects.lbl_scnpost_srad_request_date_time = obj;
             lv_obj_set_pos(obj, 0, 119);
             lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
-            lv_obj_set_style_text_font(obj, &ui_font_roboto_mono_bold_100, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_34, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_align(obj, LV_ALIGN_DEFAULT, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text_static(obj, "01/02/2026");
+            lv_label_set_text_static(obj, "SOLICITADO EL XX/YY/ZZ A LAS HH:MM:SS");
         }
         {
-            // lbl_scnpostSRAD_Time
+            // lbl_scnpostSRAD_BreakDateTime
             lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.lbl_scnpost_srad_time = obj;
-            lv_obj_set_pos(obj, 0, 247);
+            objects.lbl_scnpost_srad_break_date_time = obj;
+            lv_obj_set_pos(obj, 0, 171);
             lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
-            lv_obj_set_style_text_font(obj, &ui_font_roboto_mono_bold_125, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_34, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text_static(obj, "01:02:03");
+            lv_label_set_text_static(obj, "DESCONEXION EL XX/YY/ZZ A LAS HH:MM:SS");
+        }
+        {
+            // lbl_scnpostSRAD_StartDateTime
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnpost_srad_start_date_time = obj;
+            lv_obj_set_pos(obj, 0, 218);
+            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_34, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "INICIADO EL XX/YY/ZZ A LAS HH:MM:SS");
+        }
+        {
+            // lbl_scnpostSRAD_StimatedEndDateTime
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnpost_srad_stimated_end_date_time = obj;
+            lv_obj_set_pos(obj, 0, 264);
+            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_34, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "FIN PREVISTO EL XX/YY/ZZ A LAS HH:MM:SS");
+        }
+        {
+            // lbl_scnpostSRAD_StimatedDuration
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnpost_srad_stimated_duration = obj;
+            lv_obj_set_pos(obj, 0, 310);
+            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_34, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "DURACION PREVISTA: HH:MM:SS");
+        }
+        {
+            // lbl_scnpostSRAD_RealDuration
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnpost_srad_real_duration = obj;
+            lv_obj_set_pos(obj, 0, 402);
+            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_34, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "DURACION REAL: HH:MM:SS");
+        }
+        {
+            // lbl_scnpostSRAD_RealEndDateTime
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnpost_srad_real_end_date_time = obj;
+            lv_obj_set_pos(obj, 0, 356);
+            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_34, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "FIN REAL EL XX/YY/ZZ A LAS HH:MM:SS");
         }
     }
     
