@@ -115,7 +115,7 @@ TAMC_GT911 ts(
 lv_color_t *draw_buf = nullptr;
 
 // PRE-SRAD variables
-#define GPIO_SRAD 17
+#define GPIO_SRAD 12
 const uint16_t SHUTDOWN_TIME = 120;        // segundos
 uint16_t pre_srad_countdown = 3 * 60 + 30; // 210s (valor de prueba)
 
@@ -131,7 +131,7 @@ uint32_t srad_countdown = 0; // segundos que faltan para fin de SRAD
 uint8_t srad_end_hour = 0;   // hora de finalización de SRAD
 
 // END SRAD variables
-#define GPIO_ENDSRAD 18             // Salir prematuramente del SRAD
+#define GPIO_ENDSRAD 13            // Salir prematuramente del SRAD
 uint16_t post_srad_duration_s = 20; // segundos en POST_SRAD antes de pasar a SHOW_CLOCK
 uint16_t post_srad_countdown = 0;
 
