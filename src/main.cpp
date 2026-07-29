@@ -122,7 +122,7 @@ uint32_t srad_countdown = 0; // segundos que faltan para fin de SRAD
 uint8_t srad_end_hour = 0;   // hora de finalización de SRAD
 
 // END SRAD variables
-#define GPIO_ENDSRAD 13            // Salir prematuramente del SRAD
+#define GPIO_ENDSRAD 13             // Salir prematuramente del SRAD
 uint16_t post_srad_duration_s = 20; // segundos en POST_SRAD antes de pasar a SHOW_CLOCK
 uint16_t post_srad_countdown = 0;
 
@@ -548,7 +548,8 @@ void enter_POST_SRAD()
     {
       time_t time_srad_end = mktime(&t);
       double diff_sec = difftime(time_srad_end, time_srad_start);
-      if (diff_sec < 0) diff_sec = 0;
+      if (diff_sec < 0)
+        diff_sec = 0;
       uint32_t dur_s = (uint32_t)diff_sec;
       uint32_t h = dur_s / 3600;
       uint32_t m = (dur_s % 3600) / 60;
@@ -604,9 +605,14 @@ void enter_POST_SRAD()
 
 void checkENDSRADTrigger()
 {
-  if (digitalRead(GPIO_ENDSRAD) == LOW)
+  if (digitalRead(GPIO_SRAD) == HIGH)
   {
     enter_POST_SRAD();
+  }
+  if (digitalRead(GPIO_ENDSRAD) == LOW)
+  {
+    srad_countdown = 10;
+    debugPrintln("ACORTANDO SRAD...");
   }
 }
 
@@ -827,8 +833,8 @@ void do_SRAD()
     snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
     lv_label_set_text(objects.lbl_scn_srad_countdown, buf);
 
-    if (srad_countdown == 0)
-      enter_POST_SRAD();
+    //    if (srad_countdown == 0)
+    //      enter_POST_SRAD();
   }
   checkENDSRADTrigger();
 }
@@ -886,7 +892,6 @@ void loop()
   default:
     break;
   }
-
   lv_task_handler();
   delay(5);
 }
