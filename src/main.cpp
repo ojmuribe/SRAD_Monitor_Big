@@ -150,6 +150,50 @@ uint32_t srad_overtime_s = 0; // segundos transcurridos en cuenta adelante
 uint16_t post_srad_duration_s = 20; // segundos en POST_SRAD antes de pasar a SHOW_CLOCK
 uint16_t post_srad_countdown = 0;
 
+// ============================================================
+// Prototipos (forward declarations)
+// Evitan errores de "was not declared in this scope" al reordenar,
+// renombrar o mover funciones más abajo en este mismo archivo.
+// ============================================================
+void log_print(lv_log_level_t level, const char *buf);
+void touchscreen_read(lv_indev_t *indev, lv_indev_data_t *data);
+void my_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+void lv_init_esp32(void);
+bool getRTCTime(struct tm &timeInfo);
+void updateClock();
+void updateSetClockButtonState();
+void IRAM_ATTR onTimer1s();
+void initTimer1s();
+void doTimer1s();
+void btn_incr_set_clock_handler(lv_event_t *e);
+void btn_decr_set_clock_handler(lv_event_t *e);
+void btn_right_set_clock_handler(lv_event_t *e);
+void btn_left_set_clock_handler(lv_event_t *e);
+void btn_ok_set_clock_handler(lv_event_t *e);
+void set_focused_spinbox(lv_obj_t *new_focus);
+void spinbox_focus_handler(lv_event_t *e);
+void enter_SET_CLOCK();
+void btn_goto_set_clock_handler(lv_event_t *e);
+void enter_LAST_SRAD();
+void btn_main_info_handler(lv_event_t *e);
+void btn_scn_last_srad_back_handler(lv_event_t *e);
+void loadSradStatsFromLittleFS();
+void start_blink_label(lv_obj_t *label);
+void checkSRADTrigger();
+void saveSradStatsToLittleFS();
+void enter_POST_SRAD();
+void checkENDSRADTrigger();
+void enter_SRAD();
+void do_IDLE();
+void do_CONNECTING_WIFI();
+void do_SYNCING_NTP();
+void do_SET_CLOCK();
+void do_SHOW_CLOCK();
+void do_PRE_SRAD();
+void do_SRAD();
+void do_POST_SRAD();
+void do_LAST_SRAD();
+
 void log_print(lv_log_level_t level, const char *buf)
 {
   LV_UNUSED(level);
