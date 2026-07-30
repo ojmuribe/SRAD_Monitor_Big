@@ -121,6 +121,10 @@ time_t time_srad_start = 0; // Para calcular la duración real en segundos
 uint32_t srad_countdown = 0; // segundos que faltan para fin de SRAD
 uint8_t srad_end_hour = 0;   // hora de finalización de SRAD
 
+// Modo "cuenta adelante": la cuenta atrás llegó a 0 pero GPIO_SRAD sigue activo
+bool srad_overtime = false;
+uint32_t srad_overtime_s = 0; // segundos transcurridos en cuenta adelante
+
 // END SRAD variables
 #define GPIO_ENDSRAD 13             // Salir prematuramente del SRAD
 uint16_t post_srad_duration_s = 20; // segundos en POST_SRAD antes de pasar a SHOW_CLOCK
@@ -531,6 +535,15 @@ void checkSRADTrigger()
 
 void enter_POST_SRAD()
 {
+  // Si veníamos de "cuenta adelante", detener el parpadeo y restaurar el color normal
+  if (srad_overtime)
+  {
+    lv_anim_del(objects.lbl_scn_srad_countdown, NULL);
+    lv_obj_set_style_opa(objects.lbl_scn_srad_countdown, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(objects.lbl_scn_srad_countdown, lv_color_hex(0x212121), LV_PART_MAIN);
+    srad_overtime = false;
+  }
+
   lv_scr_load(objects.scn_post_srad);
   lv_label_set_text(objects.lbl_scn_post_srad_message, "FIN SRAD");
   start_blink_label(objects.lbl_scn_post_srad_message);
@@ -654,6 +667,13 @@ void enter_SRAD()
   lv_scr_load(objects.scn_srad);
   lv_label_set_text(objects.lbl_scn_srad_end_time, buf_end);
   lv_label_set_text(objects.lbl_scn_srad_message, "SRAD ACTIVO");
+
+  // Reiniciar modo "cuenta adelante" y aspecto normal del label de cuenta atrás
+  srad_overtime = false;
+  srad_overtime_s = 0;
+  lv_anim_del(objects.lbl_scn_srad_countdown, NULL);
+  lv_obj_set_style_opa(objects.lbl_scn_srad_countdown, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_text_color(objects.lbl_scn_srad_countdown, lv_color_hex(0x212121), LV_PART_MAIN);
 
   char buf_cd[10];
   snprintf(buf_cd, sizeof(buf_cd), "%02d:%02d:%02d", h, m, s);
@@ -823,18 +843,41 @@ void do_SRAD()
   {
     timer1s_flag = false;
 
-    if (srad_countdown > 0)
-      srad_countdown--;
+    if (!srad_overtime)
+    {
+      if (srad_countdown > 0)
+        srad_countdown--;
 
-    uint32_t h = srad_countdown / 3600;
-    uint32_t m = (srad_countdown % 3600) / 60;
-    uint32_t s = srad_countdown % 60;
-    char buf[10];
-    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
-    lv_label_set_text(objects.lbl_scn_srad_countdown, buf);
+      uint32_t h = srad_countdown / 3600;
+      uint32_t m = (srad_countdown % 3600) / 60;
+      uint32_t s = srad_countdown % 60;
+      char buf[10];
+      snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+      lv_label_set_text(objects.lbl_scn_srad_countdown, buf);
 
-    //    if (srad_countdown == 0)
-    //      enter_POST_SRAD();
+      if (srad_countdown == 0)
+      {
+        // La cuenta atrás ha llegado a 0 pero GPIO_SRAD sigue activo:
+        // pasamos a cuenta adelante, con el texto parpadeando en blanco
+        srad_overtime = true;
+        srad_overtime_s = 0;
+        lv_obj_set_style_text_color(objects.lbl_scn_srad_countdown, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+        start_blink_label(objects.lbl_scn_srad_countdown);
+        debugPrintln("SRAD: cuenta atras a 0, iniciando cuenta adelante");
+      }
+    }
+    else
+    {
+      // Modo cuenta adelante
+      srad_overtime_s++;
+
+      uint32_t h = srad_overtime_s / 3600;
+      uint32_t m = (srad_overtime_s % 3600) / 60;
+      uint32_t s = srad_overtime_s % 60;
+      char buf[10];
+      snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+      lv_label_set_text(objects.lbl_scn_srad_countdown, buf);
+    }
   }
   checkENDSRADTrigger();
 }
