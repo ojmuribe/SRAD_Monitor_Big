@@ -17,6 +17,7 @@
 // Para el servidor NPT público
 #include <WiFi.h>
 #include <time.h>
+#include <LittleFS.h>
 
 #define WIFI_SSID "URGOSAC"
 #define WIFI_PASS "SanPellegrino"
@@ -114,6 +115,25 @@ char srad_stimated_duration[16] = "--:--:--";
 char srad_real_end_date[12] = "--/--/----";
 char srad_real_end_time[10] = "--:--:--";
 char srad_real_duration[16] = "--:--:--";
+
+#define SRAD_STATS_FILE "/srad_stats.txt"
+
+char bk_srad_req_date[12] = "--/--/----";
+char bk_srad_req_time[10] = "--:--:--";
+
+char bk_srad_break_date[12] = "--/--/----";
+char bk_srad_break_time[10] = "--:--:--";
+
+char bk_srad_start_date[12] = "--/--/----";
+char bk_srad_start_time[10] = "--:--:--";
+
+char bk_srad_stimated_end_date[12] = "--/--/----";
+char bk_srad_stimated_end_time[10] = "--:--:--";
+char bk_srad_stimated_duration[16] = "--:--:--";
+
+char bk_srad_real_end_date[12] = "--/--/----";
+char bk_srad_real_end_time[10] = "--:--:--";
+char bk_srad_real_duration[16] = "--:--:--";
 
 time_t time_srad_start = 0; // Para calcular la duración real en segundos
 
@@ -277,7 +297,8 @@ enum EstadoPrograma
   SHOW_CLOCK,
   PRE_SRAD,
   SRAD,
-  POST_SRAD
+  POST_SRAD,
+  LAST_SRAD
 };
 EstadoPrograma estadoActual = IDLE;
 
@@ -423,7 +444,114 @@ void btn_goto_set_clock_handler(lv_event_t *e)
   debugPrintln("Cambiando a: CONNECTING_WIFI (manual desde pantalla principal)");
 }
 
+void enter_LAST_SRAD()
+{
+  lv_scr_load(objects.scn_last_srad);
+  lv_label_set_text(objects.lbl_scn_last_srad_message, "ULTIMO SRAD");
+  // A diferencia de scn_post_srad, este título no debe parpadear
+
+  char buf_lbl[64];
+
+  // 1. RequestDateTime
+  snprintf(buf_lbl, sizeof(buf_lbl), "SOLICITADO EL %s A LAS %s", bk_srad_req_date, bk_srad_req_time);
+  lv_label_set_text(objects.lbl_scn_last_srad_request_date_time, buf_lbl);
+
+  // 2. BreakDateTime
+  snprintf(buf_lbl, sizeof(buf_lbl), "DESCONEXION EL %s A LAS %s", bk_srad_break_date, bk_srad_break_time);
+  lv_label_set_text(objects.lbl_scn_last_srad_break_date_time, buf_lbl);
+
+  // 3. StartDateTime
+  snprintf(buf_lbl, sizeof(buf_lbl), "INICIADO EL %s A LAS %s", bk_srad_start_date, bk_srad_start_time);
+  lv_label_set_text(objects.lbl_scn_last_srad_start_date_time, buf_lbl);
+
+  // 4. StimatedEndDateTime
+  snprintf(buf_lbl, sizeof(buf_lbl), "FIN PREVISTO EL %s A LAS %s", bk_srad_stimated_end_date, bk_srad_stimated_end_time);
+  lv_label_set_text(objects.lbl_scn_last_srad_stimated_end_date_time, buf_lbl);
+
+  // 5. StimatedDuration
+  snprintf(buf_lbl, sizeof(buf_lbl), "DURACION PREVISTA: %s", bk_srad_stimated_duration);
+  lv_label_set_text(objects.lbl_scn_last_srad_stimated_duration, buf_lbl);
+
+  // 6. RealEndDateTime
+  snprintf(buf_lbl, sizeof(buf_lbl), "FIN REAL EL %s A LAS %s", bk_srad_real_end_date, bk_srad_real_end_time);
+  lv_label_set_text(objects.lbl_scn_last_srad_real_end_date_time, buf_lbl);
+
+  // 7. RealDuration
+  snprintf(buf_lbl, sizeof(buf_lbl), "DURACION REAL: %s", bk_srad_real_duration);
+  lv_label_set_text(objects.lbl_scn_last_srad_real_duration, buf_lbl);
+
+  estadoActual = LAST_SRAD;
+  debugPrintln("Cambiando a: LAST_SRAD");
+}
+
+void btn_main_info_handler(lv_event_t *e)
+{
+  enter_LAST_SRAD();
+}
+
+void btn_scn_last_srad_back_handler(lv_event_t *e)
+{
+  updateSetClockButtonState();
+  lv_scr_load(objects.main);
+  estadoActual = SHOW_CLOCK;
+  debugPrintln("Cambiando a: SHOW_CLOCK (vuelta desde LAST_SRAD)");
+}
+
 // ============================================================
+
+// Carga desde LittleFS las variables bk_srad_* con las estadísticas del último SRAD guardado
+void loadSradStatsFromLittleFS()
+{
+  File f = LittleFS.open(SRAD_STATS_FILE, "r");
+  if (!f)
+  {
+    debugPrintln("No hay estadisticas de SRAD guardadas en LittleFS (primer arranque)");
+    return;
+  }
+
+  while (f.available())
+  {
+    String line = f.readStringUntil('\n');
+    line.trim();
+    if (line.length() == 0)
+      continue;
+
+    int sep = line.indexOf('=');
+    if (sep < 0)
+      continue;
+
+    String key = line.substring(0, sep);
+    String value = line.substring(sep + 1);
+
+    if (key == "srad_req_date")
+      snprintf(bk_srad_req_date, sizeof(bk_srad_req_date), "%s", value.c_str());
+    else if (key == "srad_req_time")
+      snprintf(bk_srad_req_time, sizeof(bk_srad_req_time), "%s", value.c_str());
+    else if (key == "srad_break_date")
+      snprintf(bk_srad_break_date, sizeof(bk_srad_break_date), "%s", value.c_str());
+    else if (key == "srad_break_time")
+      snprintf(bk_srad_break_time, sizeof(bk_srad_break_time), "%s", value.c_str());
+    else if (key == "srad_start_date")
+      snprintf(bk_srad_start_date, sizeof(bk_srad_start_date), "%s", value.c_str());
+    else if (key == "srad_start_time")
+      snprintf(bk_srad_start_time, sizeof(bk_srad_start_time), "%s", value.c_str());
+    else if (key == "srad_stimated_end_date")
+      snprintf(bk_srad_stimated_end_date, sizeof(bk_srad_stimated_end_date), "%s", value.c_str());
+    else if (key == "srad_stimated_end_time")
+      snprintf(bk_srad_stimated_end_time, sizeof(bk_srad_stimated_end_time), "%s", value.c_str());
+    else if (key == "srad_stimated_duration")
+      snprintf(bk_srad_stimated_duration, sizeof(bk_srad_stimated_duration), "%s", value.c_str());
+    else if (key == "srad_real_end_date")
+      snprintf(bk_srad_real_end_date, sizeof(bk_srad_real_end_date), "%s", value.c_str());
+    else if (key == "srad_real_end_time")
+      snprintf(bk_srad_real_end_time, sizeof(bk_srad_real_end_time), "%s", value.c_str());
+    else if (key == "srad_real_duration")
+      snprintf(bk_srad_real_duration, sizeof(bk_srad_real_duration), "%s", value.c_str());
+  }
+
+  f.close();
+  debugPrintln("Estadisticas del ultimo SRAD cargadas desde LittleFS");
+}
 
 void setup()
 {
@@ -437,6 +565,15 @@ void setup()
   pinMode(GPIO_SRAD, INPUT_PULLUP);
   pinMode(GPIO_ENDSRAD, INPUT_PULLUP);
 
+  if (!LittleFS.begin(true))
+  {
+    debugPrintln("ERROR: no se pudo montar LittleFS");
+  }
+  else
+  {
+    loadSradStatsFromLittleFS();
+  }
+
   lv_init();
   lv_tick_set_cb((lv_tick_get_cb_t)millis);
   lv_init_esp32();
@@ -445,6 +582,8 @@ void setup()
   updateSetClockButtonState();
 
   lv_obj_add_event_cb(objects.btn_scnmain_setclock, btn_goto_set_clock_handler, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(objects.btn_main_info, btn_main_info_handler, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(objects.btn_scn_last_srad_back, btn_scn_last_srad_back_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_scn_set_clock_incr, btn_incr_set_clock_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_scn_set_clock_decr, btn_decr_set_clock_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_scn_set_clock_ok, btn_ok_set_clock_handler, LV_EVENT_CLICKED, NULL);
@@ -519,6 +658,9 @@ void checkSRADTrigger()
                t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
       snprintf(srad_req_time, sizeof(srad_req_time), "%02d:%02d:%02d",
                t.tm_hour, t.tm_min, t.tm_sec);
+      // guarda los backups
+      snprintf(bk_srad_req_date, sizeof(bk_srad_req_date), "%s", srad_req_date);
+      snprintf(bk_srad_req_time, sizeof(bk_srad_req_time), "%s", srad_req_time);
     }
 
     lv_anim_del(objects.lbl_scn_pre_srad_desconexion, NULL);
@@ -531,6 +673,33 @@ void checkSRADTrigger()
     estadoActual = PRE_SRAD;
     debugPrintln("Cambiando a: PRE_SRAD");
   }
+}
+
+// Guarda en LittleFS las variables bk_srad_* con las estadísticas del último SRAD
+void saveSradStatsToLittleFS()
+{
+  File f = LittleFS.open(SRAD_STATS_FILE, "w");
+  if (!f)
+  {
+    debugPrintln("ERROR: no se pudo abrir " SRAD_STATS_FILE " para escritura en LittleFS");
+    return;
+  }
+
+  f.printf("srad_req_date=%s\n", bk_srad_req_date);
+  f.printf("srad_req_time=%s\n", bk_srad_req_time);
+  f.printf("srad_break_date=%s\n", bk_srad_break_date);
+  f.printf("srad_break_time=%s\n", bk_srad_break_time);
+  f.printf("srad_start_date=%s\n", bk_srad_start_date);
+  f.printf("srad_start_time=%s\n", bk_srad_start_time);
+  f.printf("srad_stimated_end_date=%s\n", bk_srad_stimated_end_date);
+  f.printf("srad_stimated_end_time=%s\n", bk_srad_stimated_end_time);
+  f.printf("srad_stimated_duration=%s\n", bk_srad_stimated_duration);
+  f.printf("srad_real_end_date=%s\n", bk_srad_real_end_date);
+  f.printf("srad_real_end_time=%s\n", bk_srad_real_end_time);
+  f.printf("srad_real_duration=%s\n", bk_srad_real_duration);
+
+  f.close();
+  debugPrintln("Estadisticas del ultimo SRAD guardadas en LittleFS");
 }
 
 void enter_POST_SRAD()
@@ -556,6 +725,9 @@ void enter_POST_SRAD()
              t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
     snprintf(srad_real_end_time, sizeof(srad_real_end_time), "%02d:%02d:%02d",
              t.tm_hour, t.tm_min, t.tm_sec);
+    // Guarda los backups
+    snprintf(bk_srad_real_end_date, sizeof(bk_srad_real_end_date), "%s", srad_real_end_date);
+    snprintf(bk_srad_real_end_time, sizeof(bk_srad_real_end_time), "%s", srad_real_end_time);
 
     if (time_srad_start > 0)
     {
@@ -568,6 +740,8 @@ void enter_POST_SRAD()
       uint32_t m = (dur_s % 3600) / 60;
       uint32_t s = dur_s % 60;
       snprintf(srad_real_duration, sizeof(srad_real_duration), "%02d:%02d:%02d", h, m, s);
+      // Guarda el backup
+      snprintf(bk_srad_real_duration, sizeof(bk_srad_real_duration), "%s", srad_real_duration);
     }
   }
 
@@ -612,6 +786,9 @@ void enter_POST_SRAD()
   // Reiniciar cuenta atrás de permanencia en POST_SRAD
   post_srad_countdown = post_srad_duration_s;
 
+  // Guardar los valores backup en LitteFS
+  saveSradStatsToLittleFS();
+
   estadoActual = POST_SRAD;
   debugPrintln("Cambiando a: POST_SRAD");
 }
@@ -640,6 +817,9 @@ void enter_SRAD()
            t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
   snprintf(srad_start_time, sizeof(srad_start_time), "%02d:%02d:%02d",
            t.tm_hour, t.tm_min, t.tm_sec);
+  // Guarda los bakups
+  snprintf(bk_srad_start_date, sizeof(bk_srad_start_date), "%s", srad_start_date);
+  snprintf(bk_srad_start_time, sizeof(bk_srad_start_time), "%s", srad_start_time);
 
   uint32_t secs_to_next_hour = (59 - t.tm_min) * 60 + (60 - t.tm_sec);
 
@@ -651,6 +831,8 @@ void enter_SRAD()
   uint32_t m = (srad_countdown % 3600) / 60;
   uint32_t s = srad_countdown % 60;
   snprintf(srad_stimated_duration, sizeof(srad_stimated_duration), "%02d:%02d:%02d", h, m, s);
+  // Guarda el backup
+  snprintf(bk_srad_stimated_duration, sizeof(bk_srad_stimated_duration), "%s", srad_stimated_duration);
 
   time_t time_srad_end_est = time_srad_start + srad_countdown;
   struct tm tm_end_est;
@@ -660,6 +842,9 @@ void enter_SRAD()
            tm_end_est.tm_mday, tm_end_est.tm_mon + 1, tm_end_est.tm_year + 1900);
   snprintf(srad_stimated_end_time, sizeof(srad_stimated_end_time), "%02d:%02d:%02d",
            tm_end_est.tm_hour, tm_end_est.tm_min, tm_end_est.tm_sec);
+  // Guarda los backups
+  snprintf(bk_srad_stimated_end_date, sizeof(bk_srad_stimated_end_date), "%s", srad_stimated_end_date);
+  snprintf(bk_srad_stimated_end_time, sizeof(bk_srad_stimated_end_time), "%s", srad_stimated_end_time);
 
   char buf_end[24];
   snprintf(buf_end, sizeof(buf_end), "FIN DE SRAD: %02d:00:00", srad_end_hour);
@@ -826,6 +1011,9 @@ void do_PRE_SRAD()
         snprintf(srad_break_time, sizeof(srad_break_time), "%02d:%02d:%02d",
                  t_desc.tm_hour, t_desc.tm_min, t_desc.tm_sec);
         has_srad_break = true;
+        // Guarda los backups
+        snprintf(bk_srad_break_date, sizeof(bk_srad_break_date), "%s", srad_break_date);
+        snprintf(bk_srad_break_time, sizeof(bk_srad_break_time), "%s", srad_break_time);
       }
       lv_obj_clear_flag(objects.lbl_scn_pre_srad_hora_desconexion, LV_OBJ_FLAG_HIDDEN);
     }
@@ -902,6 +1090,12 @@ void do_POST_SRAD()
   }
 }
 
+void do_LAST_SRAD()
+{
+  // La pantalla se mantiene mostrando los datos del último SRAD
+  // hasta que el usuario pulse btn_scn_last_srad_back
+}
+
 // ============================================================
 
 void loop()
@@ -931,6 +1125,9 @@ void loop()
     break;
   case POST_SRAD:
     do_POST_SRAD();
+    break;
+  case LAST_SRAD:
+    do_LAST_SRAD();
     break;
   default:
     break;

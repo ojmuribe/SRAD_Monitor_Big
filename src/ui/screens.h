@@ -18,7 +18,8 @@ enum ScreensEnum {
     SCREEN_ID_MAIN = 5,
     SCREEN_ID_SCN_RTC_SYNC = 6,
     SCREEN_ID_SCN_SRAD = 7,
-    _SCREEN_ID_LAST = 7
+    SCREEN_ID_SCN_LAST_SRAD = 8,
+    _SCREEN_ID_LAST = 8
 };
 
 typedef struct _objects_t {
@@ -29,6 +30,7 @@ typedef struct _objects_t {
     lv_obj_t *main;
     lv_obj_t *scn_rtc_sync;
     lv_obj_t *scn_srad;
+    lv_obj_t *scn_last_srad;
     lv_obj_t *lbl_scn_post_srad_message;
     lv_obj_t *lbl_scnpost_srad_request_date_time;
     lv_obj_t *lbl_scnpost_srad_break_date_time;
@@ -65,6 +67,7 @@ typedef struct _objects_t {
     lv_obj_t *lbl_scnmain_date;
     lv_obj_t *lbl_scnmain_time;
     lv_obj_t *btn_scnmain_setclock;
+    lv_obj_t *btn_main_info;
     lv_obj_t *lbl_scn_rtc_sync_sync;
     lv_obj_t *spn_scn_rtc_sync_spn;
     lv_obj_t *lbl_scn_srad_countdown;
@@ -74,6 +77,15 @@ typedef struct _objects_t {
     lv_obj_t *lbl_scn_srad_desconexion_time;
     lv_obj_t *lbl_scn_srad_duracion_time;
     lv_obj_t *lbl_scn_srad_inicio_time;
+    lv_obj_t *lbl_scn_last_srad_message;
+    lv_obj_t *lbl_scn_last_srad_request_date_time;
+    lv_obj_t *lbl_scn_last_srad_break_date_time;
+    lv_obj_t *lbl_scn_last_srad_start_date_time;
+    lv_obj_t *lbl_scn_last_srad_stimated_end_date_time;
+    lv_obj_t *lbl_scn_last_srad_stimated_duration;
+    lv_obj_t *lbl_scn_last_srad_real_duration;
+    lv_obj_t *lbl_scn_last_srad_real_end_date_time;
+    lv_obj_t *btn_scn_last_srad_back;
 } objects_t;
 
 extern objects_t objects;
@@ -98,6 +110,9 @@ void tick_screen_scn_rtc_sync();
 
 void create_screen_scn_srad();
 void tick_screen_scn_srad();
+
+void create_screen_scn_last_srad();
+void tick_screen_scn_last_srad();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);
