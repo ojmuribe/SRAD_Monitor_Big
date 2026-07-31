@@ -162,7 +162,7 @@ void lv_init_esp32(void);
 bool getRTCTime(struct tm &timeInfo);
 void updateClock();
 void updateSetClockButtonState();
-void IRAM_ATTR onTimer1s();
+void onTimer1s();
 void initTimer1s();
 void doTimer1s();
 void btn_incr_set_clock_handler(lv_event_t *e);
