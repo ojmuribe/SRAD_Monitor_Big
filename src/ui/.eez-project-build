@@ -14,9 +14,8 @@
     "ui_font_roboto_mono_bold_100.c",
     "ui_font_roboto_mono_bold_125.c",
     "ui_font_roboto_mono_bold_250.c",
-    "ui_image_info_100x100.c",
+    "ui_image_info.c",
     "ui_image_set_clock2_50x50.c",
-    "ui_image_set_clock_90x90.c",
     "vars.h"
   ]
 }

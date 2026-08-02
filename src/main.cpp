@@ -1,14 +1,15 @@
 /*
-  ESP32-CYD LVGL Boilerplate
+  SRAD Monitor Big
   ==========================
 
-  Ivan Tarozzi (itarozzi@gmail.com) 2024
+  Juan M. Uribe (https://github.com/ojmuribe)
 
   Lib dependencies
   -----------------
-  - "XPT2046_Touchscreen" library by Paul Stoffregen to use the Touchscreen - https://github.com/PaulStoffregen/XPT2046_Touchscreen
-  - "TFT_eSPI" library by Bodmer to use the TFT display - https://github.com/Bodmer/TFT_eSPI
-  - "lvgl" library by LVGL - https://github.com/lvgl/lvgl
+  - lvgl/lvgl@^9.5.0
+	- moononournation/GFX Library for Arduino
+	- tamctec/TAMC_GT911@^1.0.2
+
 */
 
 #include <Arduino.h>
@@ -61,7 +62,7 @@ Arduino_ESP32RGBPanel *rgbpanel = new Arduino_ESP32RGBPanel(
     0 /* vsync_polarity */, 22 /* vsync_front_porch */, 4 /* vsync_pulse_width */, 12 /* vsync_back_porch */,
     1 /* pclk_active_neg */, 16000000 /* prefer_speed */, false /* useBigEndian */,
     0 /* de_idle_high */, 0 /* pclk_idle_high */,
-    10 * SCREEN_WIDTH /* bounce_buffer_size_px — 10 líneas de bounce buffer */);
+    30 * SCREEN_WIDTH /* bounce_buffer_size_px — 30 líneas de bounce buffer */);
 
 Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
     SCREEN_WIDTH, SCREEN_HEIGHT, rgbpanel, 0 /* rotation */, true /* auto_flush */);

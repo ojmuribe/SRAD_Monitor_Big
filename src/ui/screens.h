@@ -67,7 +67,9 @@ typedef struct _objects_t {
     lv_obj_t *lbl_scnmain_date;
     lv_obj_t *lbl_scnmain_time;
     lv_obj_t *btn_scnmain_setclock;
+    lv_obj_t *img_set_clock;
     lv_obj_t *btn_main_info;
+    lv_obj_t *img_info;
     lv_obj_t *lbl_scn_rtc_sync_sync;
     lv_obj_t *spn_scn_rtc_sync_spn;
     lv_obj_t *lbl_scn_srad_countdown;
