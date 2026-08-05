@@ -20,6 +20,13 @@
 #include <time.h>
 #include <LittleFS.h>
 
+// Envio de email de resumen de SRAD (SMTP) usando ReadyMail
+// (sustituye a ESP Mail Client, que está descontinuada por su autor
+// y ya no compila correctamente contra el core Arduino-ESP32 actual)
+#include <WiFiClientSecure.h>
+#define ENABLE_SMTP
+#include <ReadyMail.h>
+
 #define WIFI_SSID "URGOSAC"
 #define WIFI_PASS "SanPellegrino"
 
@@ -29,6 +36,24 @@
 #define NTP_SERVER3 "es.pool.ntp.org"
 
 #define NTP_SYNC_TIMEOUT_MS 10000 // Tiempo máximo de espera para sincronizar
+
+// ============================================================
+// Envío de email de resumen al finalizar un SRAD (SMTP sobre Gmail)
+#define SMTP_HOST "smtp.gmail.com"
+#define SMTP_PORT 465
+#define EMAIL_SENDER_ACCOUNT "sradmonitor.torrasmotril@gmail.com"
+// IMPORTANTE: Gmail exige una "contraseña de aplicación" (App Password),
+// generada con la verificación en 2 pasos activada en la cuenta remitente.
+// La contraseña normal de la cuenta de Gmail NO sirve para SMTP.
+#define EMAIL_SENDER_PASSWORD "PON_AQUI_TU_APP_PASSWORD"
+#define EMAIL_SENDER_NAME "SRAD Monitor"
+#define EMAIL_RECIPIENT "juanma.torraspapel@gmail.com"
+#define EMAIL_RECIPIENT_NAME "Juanma"
+#define EMAIL_SUBJECT "RESUMEN \xC3\x9aLTIMO SRAD" // "RESUMEN ÚLTIMO SRAD" en UTF-8
+
+WiFiClientSecure smtp_ssl_client;
+SMTPClient smtp(smtp_ssl_client);
+// ============================================================
 
 #define SW_NAME_REV "MyApp v1.0"
 
@@ -192,6 +217,8 @@ void saveSradStatsToLittleFS();
 void enter_POST_SRAD();
 void checkENDSRADTrigger();
 void enter_SRAD();
+void sendPostSradSummaryEmail();
+void smtpStatusCallback(SMTPStatus status);
 void do_IDLE();
 void do_CONNECTING_WIFI();
 void do_SYNCING_NTP();
@@ -845,6 +872,73 @@ void saveSradStatsToLittleFS()
   debugPrintln("Estadisticas del ultimo SRAD guardadas en LittleFS");
 }
 
+// Callback de estado de ReadyMail (solo vuelca info por Serial)
+void smtpStatusCallback(SMTPStatus status)
+{
+  debugPrintln("SMTP: %s", status.text.c_str());
+}
+
+// Envía por email el resumen del último SRAD (mismo contenido que las
+// etiquetas de scn_last_srad, construido a partir de las variables bk_srad_*).
+// Solo se envía si en ese momento hay conexión WiFi activa; si no la hay,
+// simplemente no se envía (no se reintenta ni se encola).
+void sendPostSradSummaryEmail()
+{
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    debugPrintln("Sin conexion WiFi: no se envia el email de resumen de SRAD");
+    return;
+  }
+
+  char body[512];
+  snprintf(body, sizeof(body),
+           "SOLICITADO EL %s A LAS %s\n"
+           "DESCONEXION EL %s A LAS %s\n"
+           "INICIADO EL %s A LAS %s\n"
+           "FIN PREVISTO EL %s A LAS %s\n"
+           "DURACION PREVISTA: %s\n"
+           "FIN REAL EL %s A LAS %s\n"
+           "DURACION REAL: %s\n",
+           bk_srad_req_date, bk_srad_req_time,
+           bk_srad_break_date, bk_srad_break_time,
+           bk_srad_start_date, bk_srad_start_time,
+           bk_srad_stimated_end_date, bk_srad_stimated_end_time,
+           bk_srad_stimated_duration,
+           bk_srad_real_end_date, bk_srad_real_end_time,
+           bk_srad_real_duration);
+
+  // Gmail: no se valida el certificado del servidor (simplifica el uso en ESP32)
+  smtp_ssl_client.setInsecure();
+
+  smtp.connect(SMTP_HOST, SMTP_PORT, smtpStatusCallback);
+
+  if (!smtp.isConnected())
+  {
+    debugPrintln("ERROR: no se pudo conectar al servidor SMTP");
+    return;
+  }
+
+  smtp.authenticate(EMAIL_SENDER_ACCOUNT, EMAIL_SENDER_PASSWORD, readymail_auth_password);
+
+  SMTPMessage message;
+  message.headers.add(rfc822_from, EMAIL_SENDER_NAME " <" EMAIL_SENDER_ACCOUNT ">");
+  message.headers.add(rfc822_to, EMAIL_RECIPIENT_NAME " <" EMAIL_RECIPIENT ">");
+  message.headers.add(rfc822_subject, EMAIL_SUBJECT);
+  message.text.body(body);
+  message.timestamp = time(nullptr);
+
+  if (!smtp.send(message))
+  {
+    debugPrintln("ERROR enviando email de resumen de SRAD");
+  }
+  else
+  {
+    debugPrintln("Email de resumen de SRAD enviado correctamente");
+  }
+
+  smtp_ssl_client.stop();
+}
+
 void enter_POST_SRAD()
 {
   // Si veníamos de "cuenta adelante", detener el parpadeo y restaurar el color normal
@@ -931,6 +1025,9 @@ void enter_POST_SRAD()
 
   // Guardar los valores backup en LitteFS
   saveSradStatsToLittleFS();
+
+  // Enviar email de resumen del SRAD (solo si hay conexión WiFi en este instante)
+  sendPostSradSummaryEmail();
 
   estadoActual = POST_SRAD;
   debugPrintln("Cambiando a: POST_SRAD");
