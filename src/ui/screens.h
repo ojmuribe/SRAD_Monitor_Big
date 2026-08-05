@@ -89,6 +89,9 @@ typedef struct _objects_t {
     lv_obj_t *lbl_scn_last_srad_real_end_date_time;
     lv_obj_t *btn_scn_last_srad_back;
     lv_obj_t *btn_scn_last_srad_reset;
+    lv_obj_t *obj0;
+    lv_obj_t *pnl_scn_last_srad_reset;
+    lv_obj_t *bar_scn_last_srad_reset;
 } objects_t;
 
 extern objects_t objects;

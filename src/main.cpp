@@ -151,6 +151,10 @@ uint32_t srad_overtime_s = 0; // segundos transcurridos en cuenta adelante
 uint16_t post_srad_duration_s = 20; // segundos en POST_SRAD antes de pasar a SHOW_CLOCK
 uint16_t post_srad_countdown = 0;
 
+// LAST_SRAD variables
+#define LAST_SRAD_TIMEOUT_MS (5UL * 60UL * 1000UL) // 5 minutos mostrando scn_last_srad
+uint32_t last_srad_enter_ms = 0;                    // Instante (millis) en que se entró a scn_last_srad
+
 // ============================================================
 // Prototipos (forward declarations)
 // Evitan errores de "was not declared in this scope" al reordenar,
@@ -178,6 +182,7 @@ void btn_goto_set_clock_handler(lv_event_t *e);
 void enter_LAST_SRAD();
 void btn_main_info_handler(lv_event_t *e);
 void btn_scn_last_srad_back_handler(lv_event_t *e);
+void exit_LAST_SRAD_to_clock();
 void btn_scn_last_srad_reset_handler(lv_event_t *e);
 void resetSradStats();
 void loadSradStatsFromLittleFS();
@@ -497,6 +502,10 @@ void enter_LAST_SRAD()
   lv_label_set_text(objects.lbl_scn_last_srad_message, "ULTIMO SRAD");
   // A diferencia de scn_post_srad, este título no debe parpadear
 
+  // El panel de progreso del reset solo debe verse mientras se mantiene
+  // pulsado btn_scn_last_srad_reset
+  lv_obj_add_flag(objects.pnl_scn_last_srad_reset, LV_OBJ_FLAG_HIDDEN);
+
   char buf_lbl[64];
 
   // 1. RequestDateTime
@@ -528,6 +537,7 @@ void enter_LAST_SRAD()
   lv_label_set_text(objects.lbl_scn_last_srad_real_duration, buf_lbl);
 
   estadoActual = LAST_SRAD;
+  last_srad_enter_ms = millis();
   debugPrintln("Cambiando a: LAST_SRAD");
 }
 
@@ -537,6 +547,13 @@ void btn_main_info_handler(lv_event_t *e)
 }
 
 void btn_scn_last_srad_back_handler(lv_event_t *e)
+{
+  exit_LAST_SRAD_to_clock();
+}
+
+// Sale de scn_last_srad y vuelve a SHOW_CLOCK. La usan tanto el botón
+// VOLVER como el timeout automático de 5 minutos en do_LAST_SRAD().
+void exit_LAST_SRAD_to_clock()
 {
   updateSetClockButtonState();
   lv_scr_load(objects.main);
@@ -577,6 +594,10 @@ void resetSradStats()
 // estadísticas mostradas en scn_last_srad y las guarda en LittleFS.
 // Se controla manualmente el tiempo de pulsación (independiente del
 // long_press_time global de LVGL) usando los eventos PRESSED/PRESSING/RELEASED.
+// Mientras se mantiene pulsado, se muestra pnl_scn_last_srad_reset con
+// bar_scn_last_srad_reset descendiendo del 100% al 0% en 5 segundos.
+#define RESET_HOLD_MS 5000
+
 void btn_scn_last_srad_reset_handler(lv_event_t *e)
 {
   static uint32_t press_start_ms = 0;
@@ -588,12 +609,23 @@ void btn_scn_last_srad_reset_handler(lv_event_t *e)
   {
     press_start_ms = millis();
     reset_done_this_press = false;
+
+    lv_bar_set_value(objects.bar_scn_last_srad_reset, 100, LV_ANIM_OFF);
+    lv_obj_clear_flag(objects.pnl_scn_last_srad_reset, LV_OBJ_FLAG_HIDDEN);
   }
   else if (code == LV_EVENT_PRESSING)
   {
-    if (!reset_done_this_press && (millis() - press_start_ms >= 5000))
+    uint32_t elapsed_ms = millis() - press_start_ms;
+    if (elapsed_ms > RESET_HOLD_MS)
+      elapsed_ms = RESET_HOLD_MS;
+
+    int32_t bar_value = 100 - (int32_t)((elapsed_ms * 100UL) / RESET_HOLD_MS);
+    lv_bar_set_value(objects.bar_scn_last_srad_reset, bar_value, LV_ANIM_OFF);
+
+    if (!reset_done_this_press && elapsed_ms >= RESET_HOLD_MS)
     {
       reset_done_this_press = true;
+      lv_obj_add_flag(objects.pnl_scn_last_srad_reset, LV_OBJ_FLAG_HIDDEN);
       resetSradStats();
     }
   }
@@ -601,6 +633,7 @@ void btn_scn_last_srad_reset_handler(lv_event_t *e)
   {
     press_start_ms = 0;
     reset_done_this_press = false;
+    lv_obj_add_flag(objects.pnl_scn_last_srad_reset, LV_OBJ_FLAG_HIDDEN);
   }
 }
 
@@ -1203,7 +1236,14 @@ void do_POST_SRAD()
 void do_LAST_SRAD()
 {
   // La pantalla se mantiene mostrando los datos del último SRAD
-  // hasta que el usuario pulse btn_scn_last_srad_back
+  // hasta que el usuario pulse btn_scn_last_srad_back, o hasta que
+  // hayan transcurrido 5 minutos mostrándose, momento en el que se
+  // sale automáticamente hacia SHOW_CLOCK (igual que con el botón VOLVER).
+  if (millis() - last_srad_enter_ms >= LAST_SRAD_TIMEOUT_MS)
+  {
+    debugPrintln("Timeout de 5 minutos en LAST_SRAD: volviendo a SHOW_CLOCK");
+    exit_LAST_SRAD_to_clock();
+  }
 }
 
 // ============================================================
