@@ -178,6 +178,8 @@ void btn_goto_set_clock_handler(lv_event_t *e);
 void enter_LAST_SRAD();
 void btn_main_info_handler(lv_event_t *e);
 void btn_scn_last_srad_back_handler(lv_event_t *e);
+void btn_scn_last_srad_reset_handler(lv_event_t *e);
+void resetSradStats();
 void loadSradStatsFromLittleFS();
 void start_blink_label(lv_obj_t *label);
 void checkSRADTrigger();
@@ -542,6 +544,66 @@ void btn_scn_last_srad_back_handler(lv_event_t *e)
   debugPrintln("Cambiando a: SHOW_CLOCK (vuelta desde LAST_SRAD)");
 }
 
+// Restablece las estadísticas del último SRAD a sus valores iniciales,
+// las persiste en LittleFS y refresca las etiquetas de scn_last_srad.
+void resetSradStats()
+{
+  snprintf(bk_srad_req_date, sizeof(bk_srad_req_date), "--/--/----");
+  snprintf(bk_srad_req_time, sizeof(bk_srad_req_time), "--:--:--");
+
+  snprintf(bk_srad_break_date, sizeof(bk_srad_break_date), "--/--/----");
+  snprintf(bk_srad_break_time, sizeof(bk_srad_break_time), "--:--:--");
+
+  snprintf(bk_srad_start_date, sizeof(bk_srad_start_date), "--/--/----");
+  snprintf(bk_srad_start_time, sizeof(bk_srad_start_time), "--:--:--");
+
+  snprintf(bk_srad_stimated_end_date, sizeof(bk_srad_stimated_end_date), "--/--/----");
+  snprintf(bk_srad_stimated_end_time, sizeof(bk_srad_stimated_end_time), "--:--:--");
+  snprintf(bk_srad_stimated_duration, sizeof(bk_srad_stimated_duration), "--:--:--");
+
+  snprintf(bk_srad_real_end_date, sizeof(bk_srad_real_end_date), "--/--/----");
+  snprintf(bk_srad_real_end_time, sizeof(bk_srad_real_end_time), "--:--:--");
+  snprintf(bk_srad_real_duration, sizeof(bk_srad_real_duration), "--:--:--");
+
+  saveSradStatsToLittleFS();
+
+  // Refresca en pantalla los valores ya reseteados
+  enter_LAST_SRAD();
+
+  debugPrintln("Estadisticas de LAST_SRAD reseteadas (mantenida pulsacion boton reset)");
+}
+
+// Pulsación larga (>=5s) sobre btn_scn_last_srad_reset: resetea las
+// estadísticas mostradas en scn_last_srad y las guarda en LittleFS.
+// Se controla manualmente el tiempo de pulsación (independiente del
+// long_press_time global de LVGL) usando los eventos PRESSED/PRESSING/RELEASED.
+void btn_scn_last_srad_reset_handler(lv_event_t *e)
+{
+  static uint32_t press_start_ms = 0;
+  static bool reset_done_this_press = false;
+
+  lv_event_code_t code = lv_event_get_code(e);
+
+  if (code == LV_EVENT_PRESSED)
+  {
+    press_start_ms = millis();
+    reset_done_this_press = false;
+  }
+  else if (code == LV_EVENT_PRESSING)
+  {
+    if (!reset_done_this_press && (millis() - press_start_ms >= 5000))
+    {
+      reset_done_this_press = true;
+      resetSradStats();
+    }
+  }
+  else if (code == LV_EVENT_RELEASED)
+  {
+    press_start_ms = 0;
+    reset_done_this_press = false;
+  }
+}
+
 // ============================================================
 
 // Carga desde LittleFS las variables bk_srad_* con las estadísticas del último SRAD guardado
@@ -629,6 +691,9 @@ void setup()
   lv_obj_add_event_cb(objects.btn_scnmain_setclock, btn_goto_set_clock_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_main_info, btn_main_info_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_scn_last_srad_back, btn_scn_last_srad_back_handler, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(objects.btn_scn_last_srad_reset, btn_scn_last_srad_reset_handler, LV_EVENT_PRESSED, NULL);
+  lv_obj_add_event_cb(objects.btn_scn_last_srad_reset, btn_scn_last_srad_reset_handler, LV_EVENT_PRESSING, NULL);
+  lv_obj_add_event_cb(objects.btn_scn_last_srad_reset, btn_scn_last_srad_reset_handler, LV_EVENT_RELEASED, NULL);
   lv_obj_add_event_cb(objects.btn_scn_set_clock_incr, btn_incr_set_clock_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_scn_set_clock_decr, btn_decr_set_clock_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_scn_set_clock_ok, btn_ok_set_clock_handler, LV_EVENT_CLICKED, NULL);
