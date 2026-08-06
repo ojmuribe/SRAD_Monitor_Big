@@ -818,6 +818,8 @@ void create_screen_scn_last_srad() {
             objects.pnl_scn_last_srad_reset = obj;
             lv_obj_set_pos(obj, 562, 417);
             lv_obj_set_size(obj, 192, 50);
+            lv_obj_set_style_width(obj, 0, LV_PART_SCROLLBAR | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0x2196f3), LV_PART_MAIN | LV_STATE_DEFAULT);
             {
                 lv_obj_t *parent_obj = obj;
                 {
@@ -826,6 +828,10 @@ void create_screen_scn_last_srad() {
                     objects.bar_scn_last_srad_reset = obj;
                     lv_obj_set_pos(obj, -1, -2);
                     lv_obj_set_size(obj, 150, 10);
+                    lv_bar_set_value(obj, 100, LV_ANIM_OFF);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xffffff), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+                    lv_obj_set_style_outline_width(obj, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+                    lv_obj_set_style_outline_color(obj, lv_color_hex(0x000000), LV_PART_INDICATOR | LV_STATE_DEFAULT);
                 }
             }
         }

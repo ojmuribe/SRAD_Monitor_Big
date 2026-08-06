@@ -3877,7 +3877,16 @@
                   "disabledStateType": "literal",
                   "states": "",
                   "localStyles": {
-                    "objID": "b669db8c-945b-4dce-b881-701bc7847625"
+                    "objID": "b669db8c-945b-4dce-b881-701bc7847625",
+                    "definition": {
+                      "INDICATOR": {
+                        "DEFAULT": {
+                          "bg_color": "#ffffff",
+                          "outline_width": 0,
+                          "outline_color": "#000000"
+                        }
+                      }
+                    }
                   },
                   "group": "",
                   "groupIndex": 0,
@@ -3886,7 +3895,7 @@
                   "max": 100,
                   "maxType": "literal",
                   "mode": "NORMAL",
-                  "value": 0,
+                  "value": 100,
                   "valueType": "literal",
                   "previewValue": "25",
                   "valueStart": 0,
@@ -3907,7 +3916,19 @@
               "disabledStateType": "literal",
               "states": "",
               "localStyles": {
-                "objID": "cd031da3-ad7d-4961-d720-76307ae0e0cd"
+                "objID": "cd031da3-ad7d-4961-d720-76307ae0e0cd",
+                "definition": {
+                  "SCROLLBAR": {
+                    "DEFAULT": {
+                      "width": 0
+                    }
+                  },
+                  "MAIN": {
+                    "DEFAULT": {
+                      "bg_color": "#2196f3"
+                    }
+                  }
+                }
               },
               "group": "",
               "groupIndex": 0
