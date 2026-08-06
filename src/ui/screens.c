@@ -22,6 +22,137 @@ lv_obj_t *tick_value_change_obj;
 // Screens
 //
 
+void create_screen_main() {
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.main = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 800, 480);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xf5f5f5), LV_PART_MAIN | LV_STATE_DEFAULT);
+    {
+        lv_obj_t *parent_obj = obj;
+        {
+            // lbl_scnmain_date
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnmain_date = obj;
+            lv_obj_set_pos(obj, 0, 94);
+            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_roboto_mono_bold_100, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_align(obj, LV_ALIGN_DEFAULT, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "01/02/2026");
+        }
+        {
+            // lbl_scnmain_time
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnmain_time = obj;
+            lv_obj_set_pos(obj, 0, 240);
+            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_roboto_mono_bold_125, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "01:02:03");
+        }
+        {
+            // btn_scnmain_setclock
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.btn_scnmain_setclock = obj;
+            lv_obj_set_pos(obj, 569, 369);
+            lv_obj_set_size(obj, 100, 100);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    // img_setClock
+                    lv_obj_t *obj = lv_image_create(parent_obj);
+                    objects.img_set_clock = obj;
+                    lv_obj_set_pos(obj, 5, 14);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_image_set_src(obj, &img_set_clock2_50x50);
+                }
+            }
+        }
+        {
+            // btn_main_info
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.btn_main_info = obj;
+            lv_obj_set_pos(obj, 683, 369);
+            lv_obj_set_size(obj, 100, 100);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0xf5f5f5), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_shadow_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    // img_info
+                    lv_obj_t *obj = lv_image_create(parent_obj);
+                    objects.img_info = obj;
+                    lv_obj_set_pos(obj, -20, -11);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_image_set_src(obj, &img_info);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xf5f5f5), LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+            }
+        }
+        {
+            // lbl_scnmain_wifi_status
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lbl_scnmain_wifi_status = obj;
+            lv_obj_set_pos(obj, 703, 13);
+            lv_obj_set_size(obj, 60, 52);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_48, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "\uF1EB");
+        }
+        {
+            // ctn_scnmain_noWiFi
+            lv_obj_t *obj = lv_obj_create(parent_obj);
+            objects.ctn_scnmain_no_wi_fi = obj;
+            lv_obj_set_pos(obj, 703, 13);
+            lv_obj_set_size(obj, 60, 52);
+            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    // ln_scnmain_noWiFi_1
+                    lv_obj_t *obj = lv_line_create(parent_obj);
+                    objects.ln_scnmain_no_wi_fi_1 = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, 60, 52);
+                    static lv_point_precise_t line_points[] = {
+                        { 0, 0 },
+                        { 60, 52 }
+                    };
+                    lv_line_set_points(obj, line_points, 2);
+                    lv_obj_set_style_line_width(obj, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_line_color(obj, lv_color_hex(0xff0000), LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // ln_scnmain_noWiFi_2
+                    lv_obj_t *obj = lv_line_create(parent_obj);
+                    objects.ln_scnmain_no_wi_fi_2 = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, 60, 52);
+                    static lv_point_precise_t line_points[] = {
+                        { 0, 52 },
+                        { 60, 0 }
+                    };
+                    lv_line_set_points(obj, line_points, 2);
+                    lv_obj_set_style_line_width(obj, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_line_color(obj, lv_color_hex(0xff0000), LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+            }
+        }
+    }
+    
+    tick_screen_main();
+}
+
+void tick_screen_main() {
+}
+
 void create_screen_scn_post_srad() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_post_srad = obj;
@@ -488,82 +619,6 @@ void create_screen_scn_wifi_conn() {
 void tick_screen_scn_wifi_conn() {
 }
 
-void create_screen_main() {
-    lv_obj_t *obj = lv_obj_create(0);
-    objects.main = obj;
-    lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 800, 480);
-    lv_obj_set_style_bg_color(obj, lv_color_hex(0xf5f5f5), LV_PART_MAIN | LV_STATE_DEFAULT);
-    {
-        lv_obj_t *parent_obj = obj;
-        {
-            // lbl_scnmain_date
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.lbl_scnmain_date = obj;
-            lv_obj_set_pos(obj, 0, 94);
-            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
-            lv_obj_set_style_text_font(obj, &ui_font_roboto_mono_bold_100, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_align(obj, LV_ALIGN_DEFAULT, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text_static(obj, "01/02/2026");
-        }
-        {
-            // lbl_scnmain_time
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.lbl_scnmain_time = obj;
-            lv_obj_set_pos(obj, 0, 240);
-            lv_obj_set_size(obj, 800, LV_SIZE_CONTENT);
-            lv_obj_set_style_text_font(obj, &ui_font_roboto_mono_bold_125, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text_static(obj, "01:02:03");
-        }
-        {
-            // btn_scnmain_setclock
-            lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.btn_scnmain_setclock = obj;
-            lv_obj_set_pos(obj, 569, 369);
-            lv_obj_set_size(obj, 100, 100);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    // img_setClock
-                    lv_obj_t *obj = lv_image_create(parent_obj);
-                    objects.img_set_clock = obj;
-                    lv_obj_set_pos(obj, 5, 14);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_image_set_src(obj, &img_set_clock2_50x50);
-                }
-            }
-        }
-        {
-            // btn_main_info
-            lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.btn_main_info = obj;
-            lv_obj_set_pos(obj, 683, 369);
-            lv_obj_set_size(obj, 100, 100);
-            lv_obj_set_style_bg_color(obj, lv_color_hex(0xf5f5f5), LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_shadow_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    // img_info
-                    lv_obj_t *obj = lv_image_create(parent_obj);
-                    objects.img_info = obj;
-                    lv_obj_set_pos(obj, -20, -11);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_image_set_src(obj, &img_info);
-                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xf5f5f5), LV_PART_MAIN | LV_STATE_DEFAULT);
-                }
-            }
-        }
-    }
-    
-    tick_screen_main();
-}
-
-void tick_screen_main() {
-}
-
 void create_screen_scn_rtc_sync() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.scn_rtc_sync = obj;
@@ -845,11 +900,11 @@ void tick_screen_scn_last_srad() {
 
 typedef void (*tick_screen_func_t)();
 tick_screen_func_t tick_screen_funcs[] = {
+    tick_screen_main,
     tick_screen_scn_post_srad,
     tick_screen_scn_pre_srad,
     tick_screen_scn_set_clock,
     tick_screen_scn_wifi_conn,
-    tick_screen_main,
     tick_screen_scn_rtc_sync,
     tick_screen_scn_srad,
     tick_screen_scn_last_srad,
@@ -955,11 +1010,11 @@ void create_screens() {
     
     // Initialize screens
     // Create screens
+    create_screen_main();
     create_screen_scn_post_srad();
     create_screen_scn_pre_srad();
     create_screen_scn_set_clock();
     create_screen_scn_wifi_conn();
-    create_screen_main();
     create_screen_scn_rtc_sync();
     create_screen_scn_srad();
     create_screen_scn_last_srad();

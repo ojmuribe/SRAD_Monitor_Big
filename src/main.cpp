@@ -219,6 +219,7 @@ void my_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 void lv_init_esp32(void);
 bool getRTCTime(struct tm &timeInfo);
 void updateClock();
+void updateWifiStatusIcon();
 void updateSetClockButtonState();
 void onTimer1s();
 void initTimer1s();
@@ -377,6 +378,22 @@ void updateClock()
              t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
   }
 }
+
+// Actualiza el indicador de WiFi de la pantalla principal: el label de
+// texto "WiFi" se queda siempre visible; el contenedor con el aspa
+// (ctn_scnmain_no_wi_fi), superpuesto encima, solo se muestra cuando NO
+// hay conexión.
+void updateWifiStatusIcon()
+{
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    lv_obj_add_flag(objects.ctn_scnmain_no_wi_fi, LV_OBJ_FLAG_HIDDEN);
+  }
+  else
+  {
+    lv_obj_clear_flag(objects.ctn_scnmain_no_wi_fi, LV_OBJ_FLAG_HIDDEN);
+  }
+}
 // ============================================================
 
 bool relojAjustadoManualmente = true;
@@ -435,6 +452,7 @@ void doTimer1s()
   {
     timer1s_flag = false;
     updateClock();
+    updateWifiStatusIcon();
   }
 }
 
@@ -779,6 +797,7 @@ void setup()
   ui_init();
 
   updateSetClockButtonState();
+  updateWifiStatusIcon(); // estado inicial del icono de WiFi (se refresca cada 1s en doTimer1s)
 
   lv_obj_add_event_cb(objects.btn_scnmain_setclock, btn_goto_set_clock_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_main_info, btn_main_info_handler, LV_EVENT_CLICKED, NULL);

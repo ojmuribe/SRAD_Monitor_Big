@@ -11,11 +11,11 @@ extern "C" {
 
 enum ScreensEnum {
     _SCREEN_ID_FIRST = 1,
-    SCREEN_ID_SCN_POST_SRAD = 1,
-    SCREEN_ID_SCN_PRE_SRAD = 2,
-    SCREEN_ID_SCN_SET_CLOCK = 3,
-    SCREEN_ID_SCN_WIFI_CONN = 4,
-    SCREEN_ID_MAIN = 5,
+    SCREEN_ID_MAIN = 1,
+    SCREEN_ID_SCN_POST_SRAD = 2,
+    SCREEN_ID_SCN_PRE_SRAD = 3,
+    SCREEN_ID_SCN_SET_CLOCK = 4,
+    SCREEN_ID_SCN_WIFI_CONN = 5,
     SCREEN_ID_SCN_RTC_SYNC = 6,
     SCREEN_ID_SCN_SRAD = 7,
     SCREEN_ID_SCN_LAST_SRAD = 8,
@@ -23,14 +23,24 @@ enum ScreensEnum {
 };
 
 typedef struct _objects_t {
+    lv_obj_t *main;
     lv_obj_t *scn_post_srad;
     lv_obj_t *scn_pre_srad;
     lv_obj_t *scn_set_clock;
     lv_obj_t *scn_wifi_conn;
-    lv_obj_t *main;
     lv_obj_t *scn_rtc_sync;
     lv_obj_t *scn_srad;
     lv_obj_t *scn_last_srad;
+    lv_obj_t *lbl_scnmain_date;
+    lv_obj_t *lbl_scnmain_time;
+    lv_obj_t *btn_scnmain_setclock;
+    lv_obj_t *img_set_clock;
+    lv_obj_t *btn_main_info;
+    lv_obj_t *img_info;
+    lv_obj_t *lbl_scnmain_wifi_status;
+    lv_obj_t *ctn_scnmain_no_wi_fi;
+    lv_obj_t *ln_scnmain_no_wi_fi_1;
+    lv_obj_t *ln_scnmain_no_wi_fi_2;
     lv_obj_t *lbl_scn_post_srad_message;
     lv_obj_t *lbl_scnpost_srad_request_date_time;
     lv_obj_t *lbl_scnpost_srad_break_date_time;
@@ -64,12 +74,6 @@ typedef struct _objects_t {
     lv_obj_t *lbl_scn_wi_fi_conn_conn;
     lv_obj_t *lbl_scn_wi_fi_conn_network;
     lv_obj_t *spn_scn_wifi_conn_spn;
-    lv_obj_t *lbl_scnmain_date;
-    lv_obj_t *lbl_scnmain_time;
-    lv_obj_t *btn_scnmain_setclock;
-    lv_obj_t *img_set_clock;
-    lv_obj_t *btn_main_info;
-    lv_obj_t *img_info;
     lv_obj_t *lbl_scn_rtc_sync_sync;
     lv_obj_t *spn_scn_rtc_sync_spn;
     lv_obj_t *lbl_scn_srad_countdown;
@@ -96,6 +100,9 @@ typedef struct _objects_t {
 
 extern objects_t objects;
 
+void create_screen_main();
+void tick_screen_main();
+
 void create_screen_scn_post_srad();
 void tick_screen_scn_post_srad();
 
@@ -107,9 +114,6 @@ void tick_screen_scn_set_clock();
 
 void create_screen_scn_wifi_conn();
 void tick_screen_scn_wifi_conn();
-
-void create_screen_main();
-void tick_screen_main();
 
 void create_screen_scn_rtc_sync();
 void tick_screen_scn_rtc_sync();
