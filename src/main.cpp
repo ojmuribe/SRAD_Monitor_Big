@@ -27,9 +27,30 @@
 // Envio de email de resumen de SRAD (SMTP) usando ReadyMail
 // (sustituye a ESP Mail Client, que está descontinuada por su autor
 // y ya no compila correctamente contra el core Arduino-ESP32 actual)
+#include <FS.h>
 #include <WiFiClientSecure.h>
 #define ENABLE_SMTP
+#define ENABLE_FS   // Permite leer la plantilla HTML y el logo desde LittleFS
+#define MY_FS LittleFS
 #include <ReadyMail.h>
+
+// Rutas en LittleFS de la plantilla HTML y del logo del email de resumen
+#define EMAIL_TEMPLATE_PATH "/email_template.html"
+#define EMAIL_LOGO_PATH "/logo_torraspapel.png"
+#define EMAIL_LOGO_CID "logo_torraspapel"
+
+// Snapshot de los datos de un SRAD ya finalizado, para pasar a la tarea de
+// envío de email/():no depende de las variables bk_srad_* una vez copiado.
+struct SradEmailData
+{
+  char req_date[12], req_time[10];
+  char break_date[12], break_time[10];
+  char start_date[12], start_time[10];
+  char stimated_end_date[12], stimated_end_time[10];
+  char stimated_duration[16];
+  char real_end_date[12], real_end_time[10];
+  char real_duration[16];
+};
 
 #define WIFI_SSID "URGOSAC"
 #define WIFI_PASS "SanPellegrino"
@@ -224,9 +245,12 @@ void saveSradStatsToLittleFS();
 void enter_POST_SRAD();
 void checkENDSRADTrigger();
 void enter_SRAD();
-void sendPostSradSummaryEmail(const char *body);
+void sendPostSradSummaryEmail(const SradEmailData *data);
 void emailSendTaskFn(void *pvParameters);
 void smtpStatusCallback(SMTPStatus status);
+void emailFileCb(File &file, const char *filename, readymail_file_operating_mode mode);
+String buildSradSummaryHtml(const SradEmailData *data);
+String buildSradSummaryPlainText(const SradEmailData *data);
 void do_IDLE();
 void do_CONNECTING_WIFI();
 void do_SYNCING_NTP();
@@ -886,19 +910,96 @@ void smtpStatusCallback(SMTPStatus status)
   debugPrintln("SMTP: %s", status.text.c_str());
 }
 
-// Envía por email el resumen del último SRAD cuyo texto ya viene construido
-// en 'body'. Solo se envía si en ese momento hay conexión WiFi activa; si no
-// la hay, simplemente no se envía (no se reintenta ni se encola).
+// Callback de archivo que ReadyMail usa para leer el logo desde LittleFS
+// al adjuntarlo como imagen inline (ver EMAIL_LOGO_PATH).
+File emailAttachFile;
+void emailFileCb(File &file, const char *filename, readymail_file_operating_mode mode)
+{
+  switch (mode)
+  {
+  case readymail_file_mode_open_read:
+    emailAttachFile = LittleFS.open(filename, FILE_READ);
+    break;
+  default:
+    break;
+  }
+  file = emailAttachFile;
+}
+
+// Construye el texto plano del resumen (fallback para clientes de correo
+// que no rendericen HTML).
+String buildSradSummaryPlainText(const SradEmailData *d)
+{
+  char buf[512];
+  snprintf(buf, sizeof(buf),
+           "SOLICITADO EL %s A LAS %s\n"
+           "DESCONEXION EL %s A LAS %s\n"
+           "INICIADO EL %s A LAS %s\n"
+           "FIN PREVISTO EL %s A LAS %s\n"
+           "DURACION PREVISTA: %s\n"
+           "FIN REAL EL %s A LAS %s\n"
+           "DURACION REAL: %s\n",
+           d->req_date, d->req_time,
+           d->break_date, d->break_time,
+           d->start_date, d->start_time,
+           d->stimated_end_date, d->stimated_end_time,
+           d->stimated_duration,
+           d->real_end_date, d->real_end_time,
+           d->real_duration);
+  return String(buf);
+}
+
+// Lee la plantilla HTML de LittleFS y sustituye los placeholders {{...}}
+// por los valores reales del SRAD. Devuelve una cadena vacía si la
+// plantilla no se pudo leer (y se registra el motivo por Serial).
+String buildSradSummaryHtml(const SradEmailData *d)
+{
+  File f = LittleFS.open(EMAIL_TEMPLATE_PATH, FILE_READ);
+  if (!f)
+  {
+    debugPrintln("ERROR: no se pudo abrir la plantilla HTML del email (%s)", EMAIL_TEMPLATE_PATH);
+    return String();
+  }
+
+  String html = f.readString();
+  f.close();
+
+  html.replace("{{REQ_DATE}}", d->req_date);
+  html.replace("{{REQ_TIME}}", d->req_time);
+  html.replace("{{BREAK_DATE}}", d->break_date);
+  html.replace("{{BREAK_TIME}}", d->break_time);
+  html.replace("{{START_DATE}}", d->start_date);
+  html.replace("{{START_TIME}}", d->start_time);
+  html.replace("{{STIMATED_END_DATE}}", d->stimated_end_date);
+  html.replace("{{STIMATED_END_TIME}}", d->stimated_end_time);
+  html.replace("{{STIMATED_DURATION}}", d->stimated_duration);
+  html.replace("{{REAL_END_DATE}}", d->real_end_date);
+  html.replace("{{REAL_END_TIME}}", d->real_end_time);
+  html.replace("{{REAL_DURATION}}", d->real_duration);
+
+  return html;
+}
+
+// Envía por email el resumen del último SRAD, en HTML (con el logo
+// incrustado leído de LittleFS) y con texto plano como fallback.
+// 'data' es un snapshot ya congelado de los valores del SRAD (ver
+// SradEmailData), para no depender de las variables bk_srad_* una vez
+// lanzada la tarea. Solo se envía si en ese momento hay conexión WiFi
+// activa; si no la hay, simplemente no se envía (no se reintenta ni se
+// encola).
 // Esta función es bloqueante (la conexión SMTP + TLS puede tardar varios
 // segundos); por eso se ejecuta en su propia tarea FreeRTOS, ver
 // emailSendTaskFn() y su lanzamiento en enter_POST_SRAD().
-void sendPostSradSummaryEmail(const char *body)
+void sendPostSradSummaryEmail(const SradEmailData *data)
 {
   if (WiFi.status() != WL_CONNECTED)
   {
     debugPrintln("Sin conexion WiFi: no se envia el email de resumen de SRAD");
     return;
   }
+
+  String htmlBody = buildSradSummaryHtml(data);
+  String textBody = buildSradSummaryPlainText(data);
 
   // Objetos LOCALES a esta llamada (no globales): así, si dos envíos llegaran
   // a solaparse en el tiempo (dos tareas FreeRTOS distintas), cada uno tiene
@@ -923,7 +1024,21 @@ void sendPostSradSummaryEmail(const char *body)
   message.headers.add(rfc822_from, EMAIL_SENDER_NAME " <" EMAIL_SENDER_ACCOUNT ">");
   message.headers.add(rfc822_to, EMAIL_RECIPIENT_NAME " <" EMAIL_RECIPIENT ">");
   message.headers.add(rfc822_subject, EMAIL_SUBJECT);
-  message.text.body(body);
+  message.text.body(textBody);
+  if (htmlBody.length() > 0)
+  {
+    message.html.body(htmlBody);
+
+    // Logo incrustado (inline), referenciado en el HTML como cid:logo_torraspapel
+    Attachment logoAttachment;
+    logoAttachment.filename = "logo_torraspapel.png";
+    logoAttachment.mime = "image/png";
+    logoAttachment.name = "logo_torraspapel.png";
+    logoAttachment.content_id = EMAIL_LOGO_CID;
+    logoAttachment.attach_file.callback = emailFileCb;
+    logoAttachment.attach_file.path = EMAIL_LOGO_PATH;
+    message.attachments.add(logoAttachment, attach_type_inline);
+  }
   message.timestamp = time(nullptr);
 
   if (!smtp.send(message))
@@ -939,15 +1054,15 @@ void sendPostSradSummaryEmail(const char *body)
 }
 
 // Función de entrada de la tarea FreeRTOS de envío de email. 'pvParameters'
-// es un buffer del heap (creado con strdup) con el texto del resumen; esta
-// tarea es la responsable de liberarlo y de autodestruirse al terminar.
+// es un SradEmailData del heap (creado con new); esta tarea es la
+// responsable de liberarlo y de autodestruirse al terminar.
 void emailSendTaskFn(void *pvParameters)
 {
-  char *body = (char *)pvParameters;
+  SradEmailData *data = (SradEmailData *)pvParameters;
 
-  sendPostSradSummaryEmail(body);
+  sendPostSradSummaryEmail(data);
 
-  free(body);
+  delete data;
   vTaskDelete(NULL);
 }
 
@@ -1040,38 +1155,28 @@ void enter_POST_SRAD()
 
   // Enviar email de resumen del SRAD en segundo plano (tarea FreeRTOS), para
   // no bloquear la UI mientras dura la conexión SMTP/TLS (puede tardar varios
-  // segundos). Se le pasa una copia del texto ya construida en este instante,
-  // para no depender de las variables bk_srad_* una vez lanzada la tarea.
+  // segundos). Se le pasa una copia (snapshot) de los valores ya congelada
+  // en este instante, para no depender de las variables bk_srad_* una vez
+  // lanzada la tarea.
   {
-    char body[512];
-    snprintf(body, sizeof(body),
-             "SOLICITADO EL %s A LAS %s\n"
-             "DESCONEXION EL %s A LAS %s\n"
-             "INICIADO EL %s A LAS %s\n"
-             "FIN PREVISTO EL %s A LAS %s\n"
-             "DURACION PREVISTA: %s\n"
-             "FIN REAL EL %s A LAS %s\n"
-             "DURACION REAL: %s\n",
-             bk_srad_req_date, bk_srad_req_time,
-             bk_srad_break_date, bk_srad_break_time,
-             bk_srad_start_date, bk_srad_start_time,
-             bk_srad_stimated_end_date, bk_srad_stimated_end_time,
-             bk_srad_stimated_duration,
-             bk_srad_real_end_date, bk_srad_real_end_time,
-             bk_srad_real_duration);
+    SradEmailData *email_data = new SradEmailData();
+    snprintf(email_data->req_date, sizeof(email_data->req_date), "%s", bk_srad_req_date);
+    snprintf(email_data->req_time, sizeof(email_data->req_time), "%s", bk_srad_req_time);
+    snprintf(email_data->break_date, sizeof(email_data->break_date), "%s", bk_srad_break_date);
+    snprintf(email_data->break_time, sizeof(email_data->break_time), "%s", bk_srad_break_time);
+    snprintf(email_data->start_date, sizeof(email_data->start_date), "%s", bk_srad_start_date);
+    snprintf(email_data->start_time, sizeof(email_data->start_time), "%s", bk_srad_start_time);
+    snprintf(email_data->stimated_end_date, sizeof(email_data->stimated_end_date), "%s", bk_srad_stimated_end_date);
+    snprintf(email_data->stimated_end_time, sizeof(email_data->stimated_end_time), "%s", bk_srad_stimated_end_time);
+    snprintf(email_data->stimated_duration, sizeof(email_data->stimated_duration), "%s", bk_srad_stimated_duration);
+    snprintf(email_data->real_end_date, sizeof(email_data->real_end_date), "%s", bk_srad_real_end_date);
+    snprintf(email_data->real_end_time, sizeof(email_data->real_end_time), "%s", bk_srad_real_end_time);
+    snprintf(email_data->real_duration, sizeof(email_data->real_duration), "%s", bk_srad_real_duration);
 
-    char *body_copy = strdup(body);
-    if (body_copy != NULL)
+    if (xTaskCreate(emailSendTaskFn, "email_send_task", 12288, email_data, 1, NULL) != pdPASS)
     {
-      if (xTaskCreate(emailSendTaskFn, "email_send_task", 12288, body_copy, 1, NULL) != pdPASS)
-      {
-        debugPrintln("ERROR: no se pudo crear la tarea de envio de email");
-        free(body_copy);
-      }
-    }
-    else
-    {
-      debugPrintln("ERROR: sin memoria para preparar el email de resumen de SRAD");
+      debugPrintln("ERROR: no se pudo crear la tarea de envio de email");
+      delete email_data;
     }
   }
 
