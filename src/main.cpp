@@ -15,6 +15,10 @@
 #include <Arduino.h>
 #include <app_config.h> // Incluye las configuraciones del proyecto
 // ============================================================
+// Para tareas en segundo plano (envío de email sin bloquear la UI)
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+// ============================================================
 // Para el servidor NPT público
 #include <WiFi.h>
 #include <time.h>
@@ -45,14 +49,17 @@
 // IMPORTANTE: Gmail exige una "contraseña de aplicación" (App Password),
 // generada con la verificación en 2 pasos activada en la cuenta remitente.
 // La contraseña normal de la cuenta de Gmail NO sirve para SMTP.
-#define EMAIL_SENDER_PASSWORD "PON_AQUI_TU_APP_PASSWORD"
+// CONTRASEÑA DE APLICACIÓN: APLICACIÓN "SRADMONITORMOTRIL"
+#define EMAIL_SENDER_PASSWORD "ndyqaqesbgjosqzx"
 #define EMAIL_SENDER_NAME "SRAD Monitor"
 #define EMAIL_RECIPIENT "juanma.torraspapel@gmail.com"
 #define EMAIL_RECIPIENT_NAME "Juanma"
 #define EMAIL_SUBJECT "RESUMEN \xC3\x9aLTIMO SRAD" // "RESUMEN ÚLTIMO SRAD" en UTF-8
 
-WiFiClientSecure smtp_ssl_client;
-SMTPClient smtp(smtp_ssl_client);
+// (WiFiClientSecure y SMTPClient ya NO son globales: cada envío crea los suyos
+// propios dentro de sendPostSradSummaryEmail(), para que dos envíos que se
+// solapen en el tiempo -lanzados en tareas FreeRTOS distintas- nunca compartan
+// el mismo socket/estado TLS)
 // ============================================================
 
 #define SW_NAME_REV "MyApp v1.0"
@@ -217,7 +224,8 @@ void saveSradStatsToLittleFS();
 void enter_POST_SRAD();
 void checkENDSRADTrigger();
 void enter_SRAD();
-void sendPostSradSummaryEmail();
+void sendPostSradSummaryEmail(const char *body);
+void emailSendTaskFn(void *pvParameters);
 void smtpStatusCallback(SMTPStatus status);
 void do_IDLE();
 void do_CONNECTING_WIFI();
@@ -878,11 +886,13 @@ void smtpStatusCallback(SMTPStatus status)
   debugPrintln("SMTP: %s", status.text.c_str());
 }
 
-// Envía por email el resumen del último SRAD (mismo contenido que las
-// etiquetas de scn_last_srad, construido a partir de las variables bk_srad_*).
-// Solo se envía si en ese momento hay conexión WiFi activa; si no la hay,
-// simplemente no se envía (no se reintenta ni se encola).
-void sendPostSradSummaryEmail()
+// Envía por email el resumen del último SRAD cuyo texto ya viene construido
+// en 'body'. Solo se envía si en ese momento hay conexión WiFi activa; si no
+// la hay, simplemente no se envía (no se reintenta ni se encola).
+// Esta función es bloqueante (la conexión SMTP + TLS puede tardar varios
+// segundos); por eso se ejecuta en su propia tarea FreeRTOS, ver
+// emailSendTaskFn() y su lanzamiento en enter_POST_SRAD().
+void sendPostSradSummaryEmail(const char *body)
 {
   if (WiFi.status() != WL_CONNECTED)
   {
@@ -890,25 +900,14 @@ void sendPostSradSummaryEmail()
     return;
   }
 
-  char body[512];
-  snprintf(body, sizeof(body),
-           "SOLICITADO EL %s A LAS %s\n"
-           "DESCONEXION EL %s A LAS %s\n"
-           "INICIADO EL %s A LAS %s\n"
-           "FIN PREVISTO EL %s A LAS %s\n"
-           "DURACION PREVISTA: %s\n"
-           "FIN REAL EL %s A LAS %s\n"
-           "DURACION REAL: %s\n",
-           bk_srad_req_date, bk_srad_req_time,
-           bk_srad_break_date, bk_srad_break_time,
-           bk_srad_start_date, bk_srad_start_time,
-           bk_srad_stimated_end_date, bk_srad_stimated_end_time,
-           bk_srad_stimated_duration,
-           bk_srad_real_end_date, bk_srad_real_end_time,
-           bk_srad_real_duration);
+  // Objetos LOCALES a esta llamada (no globales): así, si dos envíos llegaran
+  // a solaparse en el tiempo (dos tareas FreeRTOS distintas), cada uno tiene
+  // su propio socket/estado TLS y no hay ningún riesgo de corrupción.
+  WiFiClientSecure ssl_client;
+  SMTPClient smtp(ssl_client);
 
   // Gmail: no se valida el certificado del servidor (simplifica el uso en ESP32)
-  smtp_ssl_client.setInsecure();
+  ssl_client.setInsecure();
 
   smtp.connect(SMTP_HOST, SMTP_PORT, smtpStatusCallback);
 
@@ -936,7 +935,20 @@ void sendPostSradSummaryEmail()
     debugPrintln("Email de resumen de SRAD enviado correctamente");
   }
 
-  smtp_ssl_client.stop();
+  ssl_client.stop();
+}
+
+// Función de entrada de la tarea FreeRTOS de envío de email. 'pvParameters'
+// es un buffer del heap (creado con strdup) con el texto del resumen; esta
+// tarea es la responsable de liberarlo y de autodestruirse al terminar.
+void emailSendTaskFn(void *pvParameters)
+{
+  char *body = (char *)pvParameters;
+
+  sendPostSradSummaryEmail(body);
+
+  free(body);
+  vTaskDelete(NULL);
 }
 
 void enter_POST_SRAD()
@@ -1026,8 +1038,42 @@ void enter_POST_SRAD()
   // Guardar los valores backup en LitteFS
   saveSradStatsToLittleFS();
 
-  // Enviar email de resumen del SRAD (solo si hay conexión WiFi en este instante)
-  sendPostSradSummaryEmail();
+  // Enviar email de resumen del SRAD en segundo plano (tarea FreeRTOS), para
+  // no bloquear la UI mientras dura la conexión SMTP/TLS (puede tardar varios
+  // segundos). Se le pasa una copia del texto ya construida en este instante,
+  // para no depender de las variables bk_srad_* una vez lanzada la tarea.
+  {
+    char body[512];
+    snprintf(body, sizeof(body),
+             "SOLICITADO EL %s A LAS %s\n"
+             "DESCONEXION EL %s A LAS %s\n"
+             "INICIADO EL %s A LAS %s\n"
+             "FIN PREVISTO EL %s A LAS %s\n"
+             "DURACION PREVISTA: %s\n"
+             "FIN REAL EL %s A LAS %s\n"
+             "DURACION REAL: %s\n",
+             bk_srad_req_date, bk_srad_req_time,
+             bk_srad_break_date, bk_srad_break_time,
+             bk_srad_start_date, bk_srad_start_time,
+             bk_srad_stimated_end_date, bk_srad_stimated_end_time,
+             bk_srad_stimated_duration,
+             bk_srad_real_end_date, bk_srad_real_end_time,
+             bk_srad_real_duration);
+
+    char *body_copy = strdup(body);
+    if (body_copy != NULL)
+    {
+      if (xTaskCreate(emailSendTaskFn, "email_send_task", 12288, body_copy, 1, NULL) != pdPASS)
+      {
+        debugPrintln("ERROR: no se pudo crear la tarea de envio de email");
+        free(body_copy);
+      }
+    }
+    else
+    {
+      debugPrintln("ERROR: sin memoria para preparar el email de resumen de SRAD");
+    }
+  }
 
   estadoActual = POST_SRAD;
   debugPrintln("Cambiando a: POST_SRAD");
