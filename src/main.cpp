@@ -62,6 +62,10 @@ struct SradEmailData
 
 #define NTP_SYNC_TIMEOUT_MS 10000 // Tiempo máximo de espera para sincronizar
 
+// Variables de control astronómico y WiFi en segundo plano
+unsigned long last_ntp_sync_check_ms = 0;
+bool ntp_sincronizado_este_ciclo = false;
+
 // ============================================================
 // Envío de email de resumen al finalizar un SRAD (SMTP sobre Gmail)
 #define SMTP_HOST "smtp.gmail.com"
@@ -252,6 +256,7 @@ void smtpStatusCallback(SMTPStatus status);
 void emailFileCb(File &file, const char *filename, readymail_file_operating_mode mode);
 String buildSradSummaryHtml(const SradEmailData *data);
 String buildSradSummaryPlainText(const SradEmailData *data);
+void WiFiEvent(WiFiEvent_t event);
 void do_IDLE();
 void do_CONNECTING_WIFI();
 void do_SYNCING_NTP();
@@ -379,10 +384,7 @@ void updateClock()
   }
 }
 
-// Actualiza el indicador de WiFi de la pantalla principal: el label de
-// texto "WiFi" se queda siempre visible; el contenedor con el aspa
-// (ctn_scnmain_no_wi_fi), superpuesto encima, solo se muestra cuando NO
-// hay conexión.
+// Actualiza el indicador de WiFi de la pantalla principal
 void updateWifiStatusIcon()
 {
   if (WiFi.status() == WL_CONNECTED)
@@ -429,6 +431,30 @@ enum EstadoPrograma
   LAST_SRAD
 };
 EstadoPrograma estadoActual = IDLE;
+
+// Manejador nativo de eventos de la pila de red WiFi (Asíncrono y en segundo plano)
+void WiFiEvent(WiFiEvent_t event)
+{
+  switch(event) {
+    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+      Serial.println("[WiFi Event] Conexión perdida.");
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[WiFi Event] Intentando reconectar automáticamente de fondo...");
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
+      }
+      ntp_sincronizado_este_ciclo = false; // Forzar resincronización nativa cuando retorne la señal
+      break;
+    case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+      Serial.println("[WiFi Event] Conectado físicamente al AP. Esperando direccionamiento IP...");
+      break;
+    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+      Serial.print("[WiFi Event] IP Asignada con éxito: ");
+      Serial.println(WiFi.localIP());
+      break;
+    default:
+      break;
+  }
+}
 
 // ==== RUTINA DE INTERRUPCIÓN TEMPORIZADA ====================
 volatile bool timer1s_flag = false;
@@ -577,39 +603,29 @@ void enter_LAST_SRAD()
 {
   lv_scr_load(objects.scn_last_srad);
   lv_label_set_text(objects.lbl_scn_last_srad_message, "ULTIMO SRAD");
-  // A diferencia de scn_post_srad, este título no debe parpadear
 
-  // El panel de progreso del reset solo debe verse mientras se mantiene
-  // pulsado btn_scn_last_srad_reset
   lv_obj_add_flag(objects.pnl_scn_last_srad_reset, LV_OBJ_FLAG_HIDDEN);
 
   char buf_lbl[64];
 
-  // 1. RequestDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "SOLICITADO EL %s A LAS %s", bk_srad_req_date, bk_srad_req_time);
   lv_label_set_text(objects.lbl_scn_last_srad_request_date_time, buf_lbl);
 
-  // 2. BreakDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "DESCONEXION EL %s A LAS %s", bk_srad_break_date, bk_srad_break_time);
   lv_label_set_text(objects.lbl_scn_last_srad_break_date_time, buf_lbl);
 
-  // 3. StartDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "INICIADO EL %s A LAS %s", bk_srad_start_date, bk_srad_start_time);
   lv_label_set_text(objects.lbl_scn_last_srad_start_date_time, buf_lbl);
 
-  // 4. StimatedEndDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "FIN PREVISTO EL %s A LAS %s", bk_srad_stimated_end_date, bk_srad_stimated_end_time);
   lv_label_set_text(objects.lbl_scn_last_srad_stimated_end_date_time, buf_lbl);
 
-  // 5. StimatedDuration
   snprintf(buf_lbl, sizeof(buf_lbl), "DURACION PREVISTA: %s", bk_srad_stimated_duration);
   lv_label_set_text(objects.lbl_scn_last_srad_stimated_duration, buf_lbl);
 
-  // 6. RealEndDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "FIN REAL EL %s A LAS %s", bk_srad_real_end_date, bk_srad_real_end_time);
   lv_label_set_text(objects.lbl_scn_last_srad_real_end_date_time, buf_lbl);
 
-  // 7. RealDuration
   snprintf(buf_lbl, sizeof(buf_lbl), "DURACION REAL: %s", bk_srad_real_duration);
   lv_label_set_text(objects.lbl_scn_last_srad_real_duration, buf_lbl);
 
@@ -628,8 +644,6 @@ void btn_scn_last_srad_back_handler(lv_event_t *e)
   exit_LAST_SRAD_to_clock();
 }
 
-// Sale de scn_last_srad y vuelve a SHOW_CLOCK. La usan tanto el botón
-// VOLVER como el timeout automático de 5 minutos en do_LAST_SRAD().
 void exit_LAST_SRAD_to_clock()
 {
   updateSetClockButtonState();
@@ -638,8 +652,6 @@ void exit_LAST_SRAD_to_clock()
   debugPrintln("Cambiando a: SHOW_CLOCK (vuelta desde LAST_SRAD)");
 }
 
-// Restablece las estadísticas del último SRAD a sus valores iniciales,
-// las persiste en LittleFS y refresca las etiquetas de scn_last_srad.
 void resetSradStats()
 {
   snprintf(bk_srad_req_date, sizeof(bk_srad_req_date), "--/--/----");
@@ -660,19 +672,10 @@ void resetSradStats()
   snprintf(bk_srad_real_duration, sizeof(bk_srad_real_duration), "--:--:--");
 
   saveSradStatsToLittleFS();
-
-  // Refresca en pantalla los valores ya reseteados
   enter_LAST_SRAD();
-
   debugPrintln("Estadisticas de LAST_SRAD reseteadas (mantenida pulsacion boton reset)");
 }
 
-// Pulsación larga (>=5s) sobre btn_scn_last_srad_reset: resetea las
-// estadísticas mostradas en scn_last_srad y las guarda en LittleFS.
-// Se controla manualmente el tiempo de pulsación (independiente del
-// long_press_time global de LVGL) usando los eventos PRESSED/PRESSING/RELEASED.
-// Mientras se mantiene pulsado, se muestra pnl_scn_last_srad_reset con
-// bar_scn_last_srad_reset descendiendo del 100% al 0% en 5 segundos.
 #define RESET_HOLD_MS 5000
 
 void btn_scn_last_srad_reset_handler(lv_event_t *e)
@@ -714,9 +717,6 @@ void btn_scn_last_srad_reset_handler(lv_event_t *e)
   }
 }
 
-// ============================================================
-
-// Carga desde LittleFS las variables bk_srad_* con las estadísticas del último SRAD guardado
 void loadSradStatsFromLittleFS()
 {
   File f = LittleFS.open(SRAD_STATS_FILE, "r");
@@ -797,7 +797,7 @@ void setup()
   ui_init();
 
   updateSetClockButtonState();
-  updateWifiStatusIcon(); // estado inicial del icono de WiFi (se refresca cada 1s en doTimer1s)
+  updateWifiStatusIcon();
 
   lv_obj_add_event_cb(objects.btn_scnmain_setclock, btn_goto_set_clock_handler, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(objects.btn_main_info, btn_main_info_handler, LV_EVENT_CLICKED, NULL);
@@ -828,6 +828,9 @@ void setup()
   set_focused_spinbox(objects.spnbx_scn_set_clock_day);
 
   initTimer1s();
+
+  // Registrar el manejador de eventos asíncronos antes de iniciar el stack WiFi
+  WiFi.onEvent(WiFiEvent); 
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -874,12 +877,11 @@ void checkSRADTrigger()
       snprintf(buf_hora_srad, sizeof(buf_hora_srad), "A LAS %s", hora_solicitud_srad);
       lv_label_set_text(objects.lbl_scn_pre_srad_hora_srad, buf_hora_srad);
 
-      // Guardar Fecha y Hora de la solicitud
       snprintf(srad_req_date, sizeof(srad_req_date), "%02d/%02d/%04d",
                t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
       snprintf(srad_req_time, sizeof(srad_req_time), "%02d:%02d:%02d",
                t.tm_hour, t.tm_min, t.tm_sec);
-      // guarda los backups
+      
       snprintf(bk_srad_req_date, sizeof(bk_srad_req_date), "%s", srad_req_date);
       snprintf(bk_srad_req_time, sizeof(bk_srad_req_time), "%s", srad_req_time);
     }
@@ -888,7 +890,6 @@ void checkSRADTrigger()
     lv_obj_add_flag(objects.lbl_scn_pre_srad_desconexion, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(objects.lbl_scn_pre_srad_hora_desconexion, LV_OBJ_FLAG_HIDDEN);
 
-    // Resetear indicación de desconexión
     has_srad_break = false;
 
     estadoActual = PRE_SRAD;
@@ -896,7 +897,6 @@ void checkSRADTrigger()
   }
 }
 
-// Guarda en LittleFS las variables bk_srad_* con las estadísticas del último SRAD
 void saveSradStatsToLittleFS()
 {
   File f = LittleFS.open(SRAD_STATS_FILE, "w");
@@ -923,14 +923,11 @@ void saveSradStatsToLittleFS()
   debugPrintln("Estadisticas del ultimo SRAD guardadas en LittleFS");
 }
 
-// Callback de estado de ReadyMail (solo vuelca info por Serial)
 void smtpStatusCallback(SMTPStatus status)
 {
   debugPrintln("SMTP: %s", status.text.c_str());
 }
 
-// Callback de archivo que ReadyMail usa para leer el logo desde LittleFS
-// al adjuntarlo como imagen inline (ver EMAIL_LOGO_PATH).
 File emailAttachFile;
 void emailFileCb(File &file, const char *filename, readymail_file_operating_mode mode)
 {
@@ -945,8 +942,6 @@ void emailFileCb(File &file, const char *filename, readymail_file_operating_mode
   file = emailAttachFile;
 }
 
-// Construye el texto plano del resumen (fallback para clientes de correo
-// que no rendericen HTML).
 String buildSradSummaryPlainText(const SradEmailData *d)
 {
   char buf[512];
@@ -968,9 +963,6 @@ String buildSradSummaryPlainText(const SradEmailData *d)
   return String(buf);
 }
 
-// Lee la plantilla HTML de LittleFS y sustituye los placeholders {{...}}
-// por los valores reales del SRAD. Devuelve una cadena vacía si la
-// plantilla no se pudo leer (y se registra el motivo por Serial).
 String buildSradSummaryHtml(const SradEmailData *d)
 {
   File f = LittleFS.open(EMAIL_TEMPLATE_PATH, FILE_READ);
@@ -993,22 +985,12 @@ String buildSradSummaryHtml(const SradEmailData *d)
   html.replace("{{STIMATED_END_TIME}}", d->stimated_end_time);
   html.replace("{{STIMATED_DURATION}}", d->stimated_duration);
   html.replace("{{REAL_END_DATE}}", d->real_end_date);
-  html.replace("{{REAL_END_TIME}}", d->real_end_time);
+  html.replace("{{REAL_TIME}}", d->real_end_time);
   html.replace("{{REAL_DURATION}}", d->real_duration);
 
   return html;
 }
 
-// Envía por email el resumen del último SRAD, en HTML (con el logo
-// incrustado leído de LittleFS) y con texto plano como fallback.
-// 'data' es un snapshot ya congelado de los valores del SRAD (ver
-// SradEmailData), para no depender de las variables bk_srad_* una vez
-// lanzada la tarea. Solo se envía si en ese momento hay conexión WiFi
-// activa; si no la hay, simplemente no se envía (no se reintenta ni se
-// encola).
-// Esta función es bloqueante (la conexión SMTP + TLS puede tardar varios
-// segundos); por eso se ejecuta en su propia tarea FreeRTOS, ver
-// emailSendTaskFn() y su lanzamiento en enter_POST_SRAD().
 void sendPostSradSummaryEmail(const SradEmailData *data)
 {
   if (WiFi.status() != WL_CONNECTED)
@@ -1020,15 +1002,10 @@ void sendPostSradSummaryEmail(const SradEmailData *data)
   String htmlBody = buildSradSummaryHtml(data);
   String textBody = buildSradSummaryPlainText(data);
 
-  // Objetos LOCALES a esta llamada (no globales): así, si dos envíos llegaran
-  // a solaparse en el tiempo (dos tareas FreeRTOS distintas), cada uno tiene
-  // su propio socket/estado TLS y no hay ningún riesgo de corrupción.
   WiFiClientSecure ssl_client;
   SMTPClient smtp(ssl_client);
 
-  // Gmail: no se valida el certificado del servidor (simplifica el uso en ESP32)
   ssl_client.setInsecure();
-
   smtp.connect(SMTP_HOST, SMTP_PORT, smtpStatusCallback);
 
   if (!smtp.isConnected())
@@ -1048,7 +1025,6 @@ void sendPostSradSummaryEmail(const SradEmailData *data)
   {
     message.html.body(htmlBody);
 
-    // Logo incrustado (inline), referenciado en el HTML como cid:logo_torraspapel
     Attachment logoAttachment;
     logoAttachment.filename = "logo_torraspapel.png";
     logoAttachment.mime = "image/png";
@@ -1072,22 +1048,16 @@ void sendPostSradSummaryEmail(const SradEmailData *data)
   ssl_client.stop();
 }
 
-// Función de entrada de la tarea FreeRTOS de envío de email. 'pvParameters'
-// es un SradEmailData del heap (creado con new); esta tarea es la
-// responsable de liberarlo y de autodestruirse al terminar.
 void emailSendTaskFn(void *pvParameters)
 {
   SradEmailData *data = (SradEmailData *)pvParameters;
-
   sendPostSradSummaryEmail(data);
-
   delete data;
   vTaskDelete(NULL);
 }
 
 void enter_POST_SRAD()
 {
-  // Si veníamos de "cuenta adelante", detener el parpadeo y restaurar el color normal
   if (srad_overtime)
   {
     lv_anim_del(objects.lbl_scn_srad_countdown, NULL);
@@ -1100,7 +1070,6 @@ void enter_POST_SRAD()
   lv_label_set_text(objects.lbl_scn_post_srad_message, "FIN SRAD");
   start_blink_label(objects.lbl_scn_post_srad_message);
 
-  // Fecha y Hora de finalización real y cálculo de duración real
   struct tm t;
   if (getRTCTime(t))
   {
@@ -1108,7 +1077,7 @@ void enter_POST_SRAD()
              t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
     snprintf(srad_real_end_time, sizeof(srad_real_end_time), "%02d:%02d:%02d",
              t.tm_hour, t.tm_min, t.tm_sec);
-    // Guarda los backups
+    
     snprintf(bk_srad_real_end_date, sizeof(bk_srad_real_end_date), "%s", srad_real_end_date);
     snprintf(bk_srad_real_end_time, sizeof(bk_srad_real_end_time), "%s", srad_real_end_time);
 
@@ -1123,19 +1092,15 @@ void enter_POST_SRAD()
       uint32_t m = (dur_s % 3600) / 60;
       uint32_t s = dur_s % 60;
       snprintf(srad_real_duration, sizeof(srad_real_duration), "%02d:%02d:%02d", h, m, s);
-      // Guarda el backup
       snprintf(bk_srad_real_duration, sizeof(bk_srad_real_duration), "%s", srad_real_duration);
     }
   }
 
-  // Buffers formateados según solicitud
   char buf_lbl[64];
 
-  // 1. RequestDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "SOLICITADO EL %s A LAS %s", srad_req_date, srad_req_time);
   lv_label_set_text(objects.lbl_scnpost_srad_request_date_time, buf_lbl);
 
-  // 2. BreakDateTime
   if (has_srad_break)
   {
     snprintf(buf_lbl, sizeof(buf_lbl), "DESCONEXION EL %s A LAS %s", srad_break_date, srad_break_time);
@@ -1146,37 +1111,24 @@ void enter_POST_SRAD()
   }
   lv_label_set_text(objects.lbl_scnpost_srad_break_date_time, buf_lbl);
 
-  // 3. StartDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "INICIADO EL %s A LAS %s", srad_start_date, srad_start_time);
   lv_label_set_text(objects.lbl_scnpost_srad_start_date_time, buf_lbl);
 
-  // 4. StimatedEndDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "FIN PREVISTO EL %s A LAS %s", srad_stimated_end_date, srad_stimated_end_time);
   lv_label_set_text(objects.lbl_scnpost_srad_stimated_end_date_time, buf_lbl);
 
-  // 5. StimatedDuration
   snprintf(buf_lbl, sizeof(buf_lbl), "DURACION PREVISTA: %s", srad_stimated_duration);
   lv_label_set_text(objects.lbl_scnpost_srad_stimated_duration, buf_lbl);
 
-  // 6. RealEndDateTime
   snprintf(buf_lbl, sizeof(buf_lbl), "FIN REAL EL %s A LAS %s", srad_real_end_date, srad_real_end_time);
   lv_label_set_text(objects.lbl_scnpost_srad_real_end_date_time, buf_lbl);
 
-  // 7. RealDuration
   snprintf(buf_lbl, sizeof(buf_lbl), "DURACION REAL: %s", srad_real_duration);
   lv_label_set_text(objects.lbl_scnpost_srad_real_duration, buf_lbl);
 
-  // Reiniciar cuenta atrás de permanencia en POST_SRAD
   post_srad_countdown = post_srad_duration_s;
-
-  // Guardar los valores backup en LitteFS
   saveSradStatsToLittleFS();
 
-  // Enviar email de resumen del SRAD en segundo plano (tarea FreeRTOS), para
-  // no bloquear la UI mientras dura la conexión SMTP/TLS (puede tardar varios
-  // segundos). Se le pasa una copia (snapshot) de los valores ya congelada
-  // en este instante, para no depender de las variables bk_srad_* una vez
-  // lanzada la tarea.
   {
     SradEmailData *email_data = new SradEmailData();
     snprintf(email_data->req_date, sizeof(email_data->req_date), "%s", bk_srad_req_date);
@@ -1221,13 +1173,12 @@ void enter_SRAD()
   struct tm t;
   getRTCTime(t);
 
-  // Guardar instante exacto de inicio real
   time_srad_start = mktime(&t);
   snprintf(srad_start_date, sizeof(srad_start_date), "%02d/%02d/%04d",
            t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
   snprintf(srad_start_time, sizeof(srad_start_time), "%02d:%02d:%02d",
            t.tm_hour, t.tm_min, t.tm_sec);
-  // Guarda los bakups
+  
   snprintf(bk_srad_start_date, sizeof(bk_srad_start_date), "%s", srad_start_date);
   snprintf(bk_srad_start_time, sizeof(bk_srad_start_time), "%s", srad_start_time);
 
@@ -1236,12 +1187,11 @@ void enter_SRAD()
   srad_countdown = secs_to_next_hour + 3600;
   srad_end_hour = (t.tm_hour + 2) % 24;
 
-  // Duración estimada y Fecha/Hora estimada de fin
   uint32_t h = srad_countdown / 3600;
   uint32_t m = (srad_countdown % 3600) / 60;
   uint32_t s = srad_countdown % 60;
   snprintf(srad_stimated_duration, sizeof(srad_stimated_duration), "%02d:%02d:%02d", h, m, s);
-  // Guarda el backup
+  
   snprintf(bk_srad_stimated_duration, sizeof(bk_srad_stimated_duration), "%s", srad_stimated_duration);
 
   time_t time_srad_end_est = time_srad_start + srad_countdown;
@@ -1252,7 +1202,7 @@ void enter_SRAD()
            tm_end_est.tm_mday, tm_end_est.tm_mon + 1, tm_end_est.tm_year + 1900);
   snprintf(srad_stimated_end_time, sizeof(srad_stimated_end_time), "%02d:%02d:%02d",
            tm_end_est.tm_hour, tm_end_est.tm_min, tm_end_est.tm_sec);
-  // Guarda los backups
+  
   snprintf(bk_srad_stimated_end_date, sizeof(bk_srad_stimated_end_date), "%s", srad_stimated_end_date);
   snprintf(bk_srad_stimated_end_time, sizeof(bk_srad_stimated_end_time), "%s", srad_stimated_end_time);
 
@@ -1263,7 +1213,6 @@ void enter_SRAD()
   lv_label_set_text(objects.lbl_scn_srad_end_time, buf_end);
   lv_label_set_text(objects.lbl_scn_srad_message, "SRAD ACTIVO");
 
-  // Reiniciar modo "cuenta adelante" y aspecto normal del label de cuenta atrás
   srad_overtime = false;
   srad_overtime_s = 0;
   lv_anim_del(objects.lbl_scn_srad_countdown, NULL);
@@ -1317,7 +1266,10 @@ void do_CONNECTING_WIFI()
 
       struct timeval tv_invalid = {0, 0};
       settimeofday(&tv_invalid, nullptr);
-      configTime(0, 0, NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
+      
+      // Ajustamos Husos Horarios Oficiales de España nativamente (CET/CEST) en el core lwIP
+      configTzTime("CET-1CEST,M3.5.0,M10.5.0", NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
+      
       wifi_start_ms = millis();
       lv_scr_load(objects.scn_rtc_sync);
       estadoActual = SYNCING_NTP;
@@ -1340,13 +1292,10 @@ void do_SYNCING_NTP()
 {
   struct tm t;
 
-  if (ntp_synced_ms == 0 && getLocalTime(&t))
+  // Al usar configTzTime, getLocalTime ya devuelve la hora española exacta con horario de verano/invierno
+  if (ntp_synced_ms == 0 && getLocalTime(&t, 10))
   {
-    time_t utcNow = time(nullptr);
-    time_t localNow = utcNow + getSpainOffset();
-    struct timeval tv = {.tv_sec = localNow, .tv_usec = 0};
-    settimeofday(&tv, nullptr);
-    debugPrintln("NTP sincronizado, esperando 2s...");
+    debugPrintln("NTP sincronizado nativamente con hora española, esperando 2s...");
     ntp_synced_ms = millis();
   }
 
@@ -1356,6 +1305,7 @@ void do_SYNCING_NTP()
     {
       ntp_synced_ms = 0;
       relojAjustadoManualmente = false;
+      ntp_sincronizado_este_ciclo = true; 
       updateSetClockButtonState();
       lv_scr_load(objects.main);
       estadoActual = SHOW_CLOCK;
@@ -1380,6 +1330,37 @@ void do_SHOW_CLOCK()
   doTimer1s();
   lv_label_set_text(objects.lbl_scnmain_time, buf_hora);
   lv_label_set_text(objects.lbl_scnmain_date, buf_fecha);
+
+  // Comprobación y resincronización automatizada silenciosa tras microcortes
+  if (WiFi.status() == WL_CONNECTED) 
+  {
+    if (!ntp_sincronizado_este_ciclo && (millis() - last_ntp_sync_check_ms > 10000)) 
+    {
+      last_ntp_sync_check_ms = millis();
+      
+      struct tm t;
+      static bool ntp_inicializado = false;
+      if (!ntp_inicializado) {
+        configTzTime("CET-1CEST,M3.5.0,M10.5.0", NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
+        ntp_inicializado = true;
+      }
+
+      // Interrogación rápida sin colgar los manejadores gráficos de LVGL
+      if (getLocalTime(&t, 10)) 
+      {
+        relojAjustadoManualmente = false;
+        ntp_sincronizado_este_ciclo = true;
+        updateSetClockButtonState();
+        debugPrintln("[NTP Automático] Reloj de fondo sincronizado nativamente en hora española.");
+      }
+    }
+  }
+  else 
+  {
+    // Si se pierde la señal, armamos el flag para que actualice en cuanto regrese la WiFi
+    ntp_sincronizado_este_ciclo = false;
+  }
+
   checkSRADTrigger();
 }
 
@@ -1415,13 +1396,12 @@ void do_PRE_SRAD()
         snprintf(buf_hora_desconexion, sizeof(buf_hora_desconexion), "A LAS %s", hora_desconexion_srad);
         lv_label_set_text(objects.lbl_scn_pre_srad_hora_desconexion, buf_hora_desconexion);
 
-        // Guardar Fecha y Hora de la desconexión
         snprintf(srad_break_date, sizeof(srad_break_date), "%02d/%02d/%04d",
                  t_desc.tm_mday, t_desc.tm_mon + 1, t_desc.tm_year + 1900);
         snprintf(srad_break_time, sizeof(srad_break_time), "%02d:%02d:%02d",
                  t_desc.tm_hour, t_desc.tm_min, t_desc.tm_sec);
         has_srad_break = true;
-        // Guarda los backups
+        
         snprintf(bk_srad_break_date, sizeof(bk_srad_break_date), "%s", srad_break_date);
         snprintf(bk_srad_break_time, sizeof(bk_srad_break_time), "%s", srad_break_time);
       }
@@ -1455,8 +1435,6 @@ void do_SRAD()
 
       if (srad_countdown == 0)
       {
-        // La cuenta atrás ha llegado a 0 pero GPIO_SRAD sigue activo:
-        // pasamos a cuenta adelante, con el texto parpadeando en blanco
         srad_overtime = true;
         srad_overtime_s = 0;
         lv_obj_set_style_text_color(objects.lbl_scn_srad_countdown, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
@@ -1466,7 +1444,6 @@ void do_SRAD()
     }
     else
     {
-      // Modo cuenta adelante
       srad_overtime_s++;
 
       uint32_t h = srad_overtime_s / 3600;
@@ -1502,10 +1479,6 @@ void do_POST_SRAD()
 
 void do_LAST_SRAD()
 {
-  // La pantalla se mantiene mostrando los datos del último SRAD
-  // hasta que el usuario pulse btn_scn_last_srad_back, o hasta que
-  // hayan transcurrido 5 minutos mostrándose, momento en el que se
-  // sale automáticamente hacia SHOW_CLOCK (igual que con el botón VOLVER).
   if (millis() - last_srad_enter_ms >= LAST_SRAD_TIMEOUT_MS)
   {
     debugPrintln("Timeout de 5 minutos en LAST_SRAD: volviendo a SHOW_CLOCK");
