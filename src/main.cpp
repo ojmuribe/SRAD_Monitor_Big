@@ -985,7 +985,7 @@ String buildSradSummaryHtml(const SradEmailData *d)
   html.replace("{{STIMATED_END_TIME}}", d->stimated_end_time);
   html.replace("{{STIMATED_DURATION}}", d->stimated_duration);
   html.replace("{{REAL_END_DATE}}", d->real_end_date);
-  html.replace("{{REAL_TIME}}", d->real_end_time);
+  html.replace("{{REAL_END_TIME}}", d->real_end_time);
   html.replace("{{REAL_DURATION}}", d->real_duration);
 
   return html;
